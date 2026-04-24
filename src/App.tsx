@@ -23,7 +23,7 @@ function AuthGate() {
 
   return (
     <Routes>
-      <Route path="/" element={<Lobby user={user} onSignOut={signOut} />} />
+      <Route path="/" element={<Lobby user={user} onSignOut={signOut} onlineCount={onlineCount} />} />
       <Route path="/matchmaking" element={<Matchmaking user={user} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

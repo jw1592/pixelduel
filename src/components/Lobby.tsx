@@ -1,17 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { useProfile } from '../hooks/useProfile'
-import { useOnlineCount } from '../hooks/useOnlineCount'
 
 interface Props {
   user: User
   onSignOut: () => void
+  onlineCount: number
 }
 
-export function Lobby({ user, onSignOut }: Props) {
+export function Lobby({ user, onSignOut, onlineCount }: Props) {
   const navigate = useNavigate()
   const { profile, loading } = useProfile(user)
-  const onlineCount = useOnlineCount(user)
 
   if (loading || !profile) {
     return (
