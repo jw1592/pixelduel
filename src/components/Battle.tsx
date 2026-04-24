@@ -6,7 +6,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useWebcam } from '../hooks/useWebcam'
 import { usePoseLandmarker } from '../hooks/usePoseLandmarker'
 import { useCharacterCanvas } from '../hooks/useCharacterCanvas'
-import { useCombatGestures } from '../hooks/useCombatGestures'
+import { useCombatGestures, isBlocking } from '../hooks/useCombatGestures'
 import { useWebRTC } from '../hooks/useWebRTC'
 import type { GameMessage, BattleStatus } from '../types'
 
@@ -63,15 +63,17 @@ export function Battle({ user }: Props) {
 
   const sendMessageRef = useRef<((msg: GameMessage) => void) | null>(null)
 
+  // handleMessage must remain stable — useWebRTC re-registers the data channel handler on identity change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleMessage = useCallback((msg: GameMessage) => {
     if (msg.type === 'attack') {
-      const isBlockingNow = latestLandmarksRef.current.length >= 29 &&
-        latestLandmarksRef.current[16].y < latestLandmarksRef.current[12].y - 0.03
+      const isBlockingNow = isBlocking(latestLandmarksRef.current)
       const damage = isBlockingNow ? BLOCK_DAMAGE : HIT_DAMAGE
       setMyHp(prev => {
         const next = Math.max(0, prev - damage)
-        sendMessageRef.current?.({ type: 'hp', value: next })
-        if (next === 0) {
+        if (next > 0) {
+          sendMessageRef.current?.({ type: 'hp', value: next })
+        } else {
           sendMessageRef.current?.({ type: 'dead' })
         }
         return next
@@ -80,9 +82,14 @@ export function Battle({ user }: Props) {
       setOpponentHp(msg.value)
     } else if (msg.type === 'dead') {
       setBattleStatus('victory')
-      supabase.from('matches').update({ status: 'finished', winner_id: user.id }).eq('id', matchId)
+      if (matchId) {
+        supabase.from('matches')
+          .update({ status: 'finished', winner_id: user.id })
+          .eq('id', matchId)
+          .catch(console.error)
+      }
     }
-  }, [user.id, matchId, latestLandmarksRef])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user.id, matchId, latestLandmarksRef])
 
   const { connected, sendMessage, remoteVideoRef } = useWebRTC({
     enabled: !isAI && !!routeState,
@@ -128,11 +135,11 @@ export function Battle({ user }: Props) {
 
   const prevAttackingRef = useRef(false)
   useEffect(() => {
-    if (gesture.isAttacking && !prevAttackingRef.current) {
+    if (gesture.isAttacking && !prevAttackingRef.current && battleStatus === 'active') {
       sendMessage({ type: 'attack' })
     }
     prevAttackingRef.current = gesture.isAttacking
-  }, [gesture.isAttacking, sendMessage])
+  }, [gesture.isAttacking, sendMessage, battleStatus])
 
   if (isAI) {
     return (
@@ -158,6 +165,15 @@ export function Battle({ user }: Props) {
           {battleStatus === 'victory' ? 'VICTORY' : 'DEFEAT'}
         </p>
         <p className="text-gray-500 text-xs">Returning to lobby...</p>
+      </div>
+    )
+  }
+
+  if (!isAI && !routeState) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-red-500 text-xs">Match data missing. Please find a new match.</p>
+        <button onClick={() => navigate('/')} className="text-gray-600 hover:text-gray-400 text-xs border border-gray-700 px-6 py-3 cursor-pointer">Back to Lobby</button>
       </div>
     )
   }

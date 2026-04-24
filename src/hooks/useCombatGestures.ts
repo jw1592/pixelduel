@@ -8,6 +8,11 @@ const BLOCK_Y_MARGIN = 0.03
 const ATTACK_COOLDOWN_MS = 800
 const HISTORY_SIZE = 8
 
+export function isBlocking(landmarks: PoseLandmark[]): boolean {
+  return landmarks.length >= 29 &&
+    landmarks[16].y < landmarks[12].y - BLOCK_Y_MARGIN
+}
+
 export function detectGestures(landmarks: PoseLandmark[], wristYHistory: number[]): GestureState {
   if (landmarks.length < 29) return { isAttacking: false, isBlocking: false }
 

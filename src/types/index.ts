@@ -29,6 +29,7 @@ export interface Match {
   player1_id: string
   player2_id: string
   status: 'active' | 'finished'
+  winner_id: string | null
   created_at: string
 }
 
