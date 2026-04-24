@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import type { PoseLandmark } from '../types'
 
-const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm'
 const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'
 
@@ -14,6 +14,7 @@ export function usePoseLandmarker(videoRef: React.RefObject<HTMLVideoElement | n
 
   useEffect(() => {
     let cancelled = false
+    let localLm: PoseLandmarker | null = null
     ;(async () => {
       try {
         const fs = await FilesetResolver.forVisionTasks(WASM_CDN)
@@ -31,9 +32,12 @@ export function usePoseLandmarker(videoRef: React.RefObject<HTMLVideoElement | n
             numPoses: 1,
           })
         }
+        localLm = lm
         if (!cancelled) {
           landmarkerRef.current = lm
           setStatus('ready')
+        } else {
+          lm.close()
         }
       } catch {
         if (!cancelled) setStatus('error')
@@ -41,7 +45,8 @@ export function usePoseLandmarker(videoRef: React.RefObject<HTMLVideoElement | n
     })()
     return () => {
       cancelled = true
-      landmarkerRef.current?.close()
+      localLm?.close()
+      landmarkerRef.current = null
     }
   }, [])
 

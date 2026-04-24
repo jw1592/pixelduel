@@ -8,17 +8,21 @@ export function useWebcam() {
 
   const start = useCallback(async () => {
     setStatus('requesting')
+    let stream: MediaStream | undefined
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480, facingMode: 'user' },
         audio: false,
       })
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
+      if (!videoRef.current) {
+        stream.getTracks().forEach(t => t.stop())
+        return
       }
+      videoRef.current.srcObject = stream
+      await videoRef.current.play()
       setStatus('granted')
     } catch {
+      stream?.getTracks().forEach(t => t.stop())
       setStatus('denied')
     }
   }, [])
