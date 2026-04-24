@@ -1,3 +1,37 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './hooks/useAuth'
+import { LoginScreen } from './components/LoginScreen'
+import { Lobby } from './components/Lobby'
+import { Matchmaking } from './components/Matchmaking'
+
+function AuthGate() {
+  const { user, loading, signInWithGoogle, signOut } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-green-400 text-xs">
+        Loading...
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <LoginScreen onLogin={signInWithGoogle} onlineCount={0} />
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<Lobby user={user} onSignOut={signOut} />} />
+      <Route path="/matchmaking" element={<Matchmaking user={user} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
+
 export default function App() {
-  return <div className="min-h-screen flex items-center justify-center text-green-400 text-xl">PixelDuel ⚔️</div>
+  return (
+    <BrowserRouter>
+      <AuthGate />
+    </BrowserRouter>
+  )
 }
