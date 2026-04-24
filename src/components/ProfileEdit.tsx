@@ -18,10 +18,12 @@ export function ProfileEdit({ user }: Props) {
   const [name, setName] = useState('')
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [webcamActive, setWebcamActive] = useState(false)
+  const [webcamError, setWebcamError] = useState<string | null>(null)
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
 
   useEffect(() => {
@@ -36,12 +38,17 @@ export function ProfileEdit({ user }: Props) {
   }, [stream])
 
   const startWebcam = useCallback(async () => {
-    const s = await navigator.mediaDevices.getUserMedia({ video: true })
-    setStream(s)
-    setWebcamActive(true)
-    setTimeout(() => {
-      if (videoRef.current) videoRef.current.srcObject = s
-    }, 50)
+    setWebcamError(null)
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: true })
+      setStream(s)
+      setWebcamActive(true)
+      setTimeout(() => {
+        if (videoRef.current) videoRef.current.srcObject = s
+      }, 50)
+    } catch {
+      setWebcamError('Camera access denied or unavailable.')
+    }
   }, [])
 
   const stopWebcam = useCallback(() => {
@@ -69,13 +76,19 @@ export function ProfileEdit({ user }: Props) {
   const save = async () => {
     if (!name.trim()) return
     setSaving(true)
-    await supabase
+    setSaveError(null)
+    const { error } = await supabase
       .from('profiles')
       .update({
         display_name: name.trim(),
         avatar_url: selectedAvatar,
       })
       .eq('id', user.id)
+    if (error) {
+      setSaveError('Failed to save. Please try again.')
+      setSaving(false)
+      return
+    }
     await refreshProfile()
     setSaving(false)
     navigate('/')
@@ -120,12 +133,17 @@ export function ProfileEdit({ user }: Props) {
       <div className="w-72 flex flex-col gap-3">
         <p className="text-gray-500 text-xs">TAKE PHOTO</p>
         {!webcamActive ? (
-          <button
-            onClick={startWebcam}
-            className="border border-gray-700 text-gray-400 hover:text-white text-xs px-4 py-2 cursor-pointer transition-colors"
-          >
-            Start Camera
-          </button>
+          <>
+            <button
+              onClick={startWebcam}
+              className="border border-gray-700 text-gray-400 hover:text-white text-xs px-4 py-2 cursor-pointer transition-colors"
+            >
+              Start Camera
+            </button>
+            {webcamError && (
+              <p className="text-red-400 text-xs">{webcamError}</p>
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center gap-2">
             <video
@@ -188,6 +206,9 @@ export function ProfileEdit({ user }: Props) {
       >
         {saving ? 'Saving...' : 'Save'}
       </button>
+      {saveError && (
+        <p className="text-red-400 text-xs">{saveError}</p>
+      )}
 
       <button
         onClick={() => navigate('/')}
