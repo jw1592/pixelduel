@@ -290,38 +290,10 @@ export function Battle({ user }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-black">
+    <div className="min-h-screen flex flex-row bg-black">
       <video ref={videoRef} className="hidden" playsInline muted />
 
-      <div className="flex-1 flex flex-col">
-        <div className="pt-2">
-          <HpBar hp={opponentHp} label="OPPONENT" flip />
-        </div>
-        <div className="flex-1 relative bg-gray-900">
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
-          {battleStatus === 'connecting' && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-gray-500 text-xs">Connecting...</p>
-            </div>
-          )}
-          {opponentAfk && opponentAfkCountdown !== null && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70">
-              <p className="text-yellow-400 text-xs text-center px-4">상대방이 자리에 없습니다</p>
-              <p className="text-white text-2xl">{opponentAfkCountdown}</p>
-              <p className="text-gray-400 text-xs text-center px-4">
-                {opponentAfkCountdown}초 후 자동 종료되고 승리로 기록됩니다
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
+      {/* Left: Me */}
       <div className="flex-1 flex flex-col">
         <div className="flex-1 relative bg-gray-950">
           <canvas
@@ -350,8 +322,38 @@ export function Battle({ user }: Props) {
             </div>
           )}
         </div>
-        <div className="pb-2">
+        <div className="py-2">
           <HpBar hp={myHp} label="YOU" />
+        </div>
+      </div>
+
+      {/* Right: Opponent */}
+      <div className="flex-1 flex flex-col">
+        <div className="flex-1 relative bg-gray-900">
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover"
+          />
+          {battleStatus === 'connecting' && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-gray-500 text-xs">Connecting...</p>
+            </div>
+          )}
+          {opponentAfk && opponentAfkCountdown !== null && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70">
+              <p className="text-yellow-400 text-xs text-center px-4">상대방이 자리에 없습니다</p>
+              <p className="text-white text-2xl">{opponentAfkCountdown}</p>
+              <p className="text-gray-400 text-xs text-center px-4">
+                {opponentAfkCountdown}초 후 자동 종료되고 승리로 기록됩니다
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="py-2">
+          <HpBar hp={opponentHp} label="OPPONENT" flip />
         </div>
       </div>
     </div>
