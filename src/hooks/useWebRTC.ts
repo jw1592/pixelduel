@@ -14,7 +14,7 @@ interface Props {
   onMessage: (msg: GameMessage) => void
 }
 
-export function useWebRTC({ enabled, user, matchId, player1Id, player2Id, canvasRef, onMessage }: Props) {
+export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMessage }: Props) {
   const [connected, setConnected] = useState(false)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const dcRef = useRef<RTCDataChannel | null>(null)
@@ -30,11 +30,14 @@ export function useWebRTC({ enabled, user, matchId, player1Id, player2Id, canvas
 
   useEffect(() => {
     if (!enabled) return
-    let pc: RTCPeerConnection
-    let signalChannel: ReturnType<typeof supabase.channel>
+    let aborted = false
+    let pc: RTCPeerConnection | undefined
+    let signalChannel: ReturnType<typeof supabase.channel> | undefined
 
     const setup = async () => {
       const iceServers = await fetchIceServers()
+      if (aborted) return
+
       pc = new RTCPeerConnection({ iceServers })
       pcRef.current = pc
 
@@ -42,7 +45,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, player2Id, canvas
       const canvas = canvasRef.current
       if (canvas) {
         const stream = (canvas as HTMLCanvasElement & { captureStream: (fps: number) => MediaStream }).captureStream(30)
-        stream.getVideoTracks().forEach(t => pc.addTrack(t, stream))
+        stream.getVideoTracks().forEach(t => pc!.addTrack(t, stream))
       }
 
       // Remote stream → video element
@@ -52,18 +55,8 @@ export function useWebRTC({ enabled, user, matchId, player1Id, player2Id, canvas
         }
       }
 
-      // ICE candidates → broadcast via Supabase
-      pc.onicecandidate = (e) => {
-        if (e.candidate) {
-          signalChannel.send({
-            type: 'broadcast',
-            event: 'signal',
-            payload: { type: 'ice', candidate: e.candidate.toJSON() } as WebRTCSignal,
-          })
-        }
-      }
-
       const onDataChannelOpen = (dc: RTCDataChannel) => {
+        if (aborted) return
         dcRef.current = dc
         dc.onmessage = (e) => {
           try { onMessage(JSON.parse(e.data) as GameMessage) } catch { /* ignore */ }
@@ -78,27 +71,49 @@ export function useWebRTC({ enabled, user, matchId, player1Id, player2Id, canvas
         pc.ondatachannel = (e) => { e.channel.onopen = () => onDataChannelOpen(e.channel) }
       }
 
+      // Assign signalChannel BEFORE setting onicecandidate (Bug 3 fix)
       signalChannel = supabase.channel(`signal-${matchId}`)
+
+      // ICE candidates — now signalChannel is assigned
+      pc.onicecandidate = (e) => {
+        if (e.candidate && signalChannel) {
+          signalChannel.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: { type: 'ice', candidate: e.candidate.toJSON() } as WebRTCSignal,
+          })
+        }
+      }
+
       signalChannel
         .on('broadcast', { event: 'signal' }, async ({ payload }) => {
-          const signal = payload as WebRTCSignal
-          if (signal.type === 'offer' && !isPlayer1) {
-            await pc.setRemoteDescription({ type: 'offer', sdp: signal.sdp })
-            const answer = await pc.createAnswer()
-            await pc.setLocalDescription(answer)
-            signalChannel.send({ type: 'broadcast', event: 'signal', payload: { type: 'answer', sdp: answer.sdp! } as WebRTCSignal })
-          } else if (signal.type === 'answer' && isPlayer1) {
-            await pc.setRemoteDescription({ type: 'answer', sdp: signal.sdp })
-          } else if (signal.type === 'ice') {
-            await pc.addIceCandidate(signal.candidate).catch(() => {})
+          if (!pc) return
+          try {
+            const signal = payload as WebRTCSignal
+            if (signal.type === 'offer' && !isPlayer1) {
+              await pc.setRemoteDescription({ type: 'offer', sdp: signal.sdp })
+              const answer = await pc.createAnswer()
+              await pc.setLocalDescription(answer)
+              signalChannel!.send({ type: 'broadcast', event: 'signal', payload: { type: 'answer', sdp: answer.sdp! } as WebRTCSignal })
+            } else if (signal.type === 'answer' && isPlayer1) {
+              await pc.setRemoteDescription({ type: 'answer', sdp: signal.sdp })
+            } else if (signal.type === 'ice') {
+              await pc.addIceCandidate(signal.candidate).catch(() => {})
+            }
+          } catch (err) {
+            console.error('[useWebRTC] signaling error:', err)
           }
         })
         .subscribe(async (status) => {
-          if (status !== 'SUBSCRIBED') return
+          if (status !== 'SUBSCRIBED' || !pc || aborted) return
           if (isPlayer1) {
-            const offer = await pc.createOffer()
-            await pc.setLocalDescription(offer)
-            signalChannel.send({ type: 'broadcast', event: 'signal', payload: { type: 'offer', sdp: offer.sdp! } as WebRTCSignal })
+            try {
+              const offer = await pc.createOffer()
+              await pc.setLocalDescription(offer)
+              signalChannel!.send({ type: 'broadcast', event: 'signal', payload: { type: 'offer', sdp: offer.sdp! } as WebRTCSignal })
+            } catch (err) {
+              console.error('[useWebRTC] offer error:', err)
+            }
           }
         })
     }
@@ -106,8 +121,12 @@ export function useWebRTC({ enabled, user, matchId, player1Id, player2Id, canvas
     setup()
 
     return () => {
+      aborted = true
       pcRef.current?.close()
-      supabase.removeChannel(signalChannel)
+      pcRef.current = null
+      dcRef.current = null
+      setConnected(false)
+      if (signalChannel) supabase.removeChannel(signalChannel)
     }
   }, [enabled, matchId, isPlayer1, canvasRef, onMessage])  // eslint-disable-line react-hooks/exhaustive-deps
 
