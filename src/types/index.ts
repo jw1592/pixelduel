@@ -2,6 +2,7 @@ export interface Profile {
   id: string
   display_name: string
   avatar_url: string | null
+  country_code: string | null
   wins: number
   losses: number
   draws: number
@@ -21,4 +22,12 @@ export type AuthUser = {
     full_name?: string
     avatar_url?: string
   }
+}
+
+export interface Match {
+  id: string
+  player1_id: string
+  player2_id: string
+  status: 'active' | 'finished'
+  created_at: string
 }
