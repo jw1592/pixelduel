@@ -6,8 +6,10 @@ export function useOnlineCount(user: User | null) {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
+    if (!user) return
+
     const channel = supabase.channel('online_users', {
-      config: { presence: { key: user?.id ?? 'anon' } },
+      config: { presence: { key: user.id } },
     })
 
     channel
@@ -16,15 +18,15 @@ export function useOnlineCount(user: User | null) {
         setCount(Object.keys(state).length)
       })
       .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED' && user) {
+        if (status === 'SUBSCRIBED') {
           await channel.track({ user_id: user.id, online_at: Date.now() })
         }
       })
 
     return () => {
-      channel.untrack().then(() => supabase.removeChannel(channel))
+      supabase.removeChannel(channel)
     }
-  }, [user])
+  }, [user?.id])
 
   return count
 }

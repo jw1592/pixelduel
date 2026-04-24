@@ -4,7 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useProfile } from '../hooks/useProfile'
 import { useMatchQueue } from '../hooks/useMatchQueue'
-import { AI_CHARACTERS } from './Battle'
+import { AI_CHARACTERS } from '../data/aiCharacters'
 
 const AI_FALLBACK_SECONDS = 30
 

@@ -5,9 +5,6 @@ interface Props {
   user: User
 }
 
-const AI_CHARACTERS = ['Creeper', 'Skeleton', 'Zombie', 'Enderman', 'Spider', 'Pig', 'Villager']
-
-export { AI_CHARACTERS }
 
 export function Battle({ user: _ }: Props) {
   const navigate = useNavigate()
