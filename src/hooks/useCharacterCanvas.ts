@@ -104,11 +104,15 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop }: Props) {
   const avatarImgRef = useRef<HTMLImageElement | null>(null)
 
   useEffect(() => {
-    if (!avatarUrl) return
+    if (!avatarUrl) {
+      avatarImgRef.current = null
+      return
+    }
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.src = avatarUrl
     avatarImgRef.current = img
+    return () => { avatarImgRef.current = null }
   }, [avatarUrl])
 
   const onFrame = useCallback((landmarks: PoseLandmark[]) => {
@@ -122,7 +126,8 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop }: Props) {
     if (canvas.width !== w) canvas.width = w
     if (canvas.height !== h) canvas.height = h
 
-    const ctx = canvas.getContext('2d')!
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
     // Mirror the webcam feed as background
     ctx.save()
     ctx.scale(-1, 1)
