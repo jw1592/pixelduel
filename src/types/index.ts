@@ -42,6 +42,8 @@ export type GameMessage =
   | { type: 'attack' }
   | { type: 'hp'; value: number }
   | { type: 'dead' }
+  | { type: 'afk_warning' }
+  | { type: 'afk_cancel' }
 
 export type WebRTCSignal =
   | { type: 'offer'; sdp: string }
