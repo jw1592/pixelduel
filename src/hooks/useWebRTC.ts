@@ -33,6 +33,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
     let aborted = false
     let pc: RTCPeerConnection | undefined
     let signalChannel: ReturnType<typeof supabase.channel> | undefined
+    let offerSent = false
 
     const setup = async () => {
       const iceServers = await fetchIceServers()
@@ -44,7 +45,6 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
       pc.oniceconnectionstatechange = () => console.log('[webrtc] ICE state:', pc?.iceConnectionState)
       pc.onconnectionstatechange = () => console.log('[webrtc] connection state:', pc?.connectionState)
 
-      // Add canvas stream (video only)
       const canvas = canvasRef.current
       console.log('[webrtc] canvas:', canvas, '| isPlayer1:', isPlayer1)
       if (canvas) {
@@ -54,7 +54,6 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
         tracks.forEach(t => pc!.addTrack(t, stream))
       }
 
-      // Remote stream → video element
       pc.ontrack = (e) => {
         console.log('[webrtc] ontrack fired — streams:', e.streams.length, 'tracks:', e.track.kind)
         if (remoteVideoRef.current && e.streams[0]) {
@@ -78,10 +77,10 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
         pc.ondatachannel = (e) => { e.channel.onopen = () => onDataChannelOpen(e.channel) }
       }
 
-      // Assign signalChannel BEFORE setting onicecandidate (Bug 3 fix)
-      signalChannel = supabase.channel(`signal-${matchId}`)
+      signalChannel = supabase.channel(`signal-${matchId}`, {
+        config: { presence: { key: user.id } },
+      })
 
-      // ICE candidates — now signalChannel is assigned
       pc.onicecandidate = (e) => {
         if (e.candidate && signalChannel) {
           signalChannel.send({
@@ -92,8 +91,28 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
         }
       }
 
+      const sendOffer = async () => {
+        if (!pc || offerSent || aborted) return
+        offerSent = true
+        try {
+          const offer = await pc.createOffer()
+          await pc.setLocalDescription(offer)
+          signalChannel!.send({ type: 'broadcast', event: 'signal', payload: { type: 'offer', sdp: offer.sdp! } as WebRTCSignal })
+          console.log('[webrtc] offer sent')
+        } catch (err) {
+          console.error('[webrtc] offer error:', err)
+        }
+      }
+
       console.log('[webrtc] subscribing to signal channel:', `signal-${matchId}`)
       signalChannel
+        // Player1 waits for player2's presence before sending offer — fixes signaling race condition
+        .on('presence', { event: 'sync' }, () => {
+          if (!isPlayer1) return
+          const others = Object.keys(signalChannel!.presenceState()).filter(k => k !== user.id)
+          console.log('[webrtc] presence sync, others in channel:', others.length)
+          if (others.length > 0) sendOffer()
+        })
         .on('broadcast', { event: 'signal' }, async ({ payload }) => {
           if (!pc) return
           try {
@@ -103,6 +122,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
               const answer = await pc.createAnswer()
               await pc.setLocalDescription(answer)
               signalChannel!.send({ type: 'broadcast', event: 'signal', payload: { type: 'answer', sdp: answer.sdp! } as WebRTCSignal })
+              console.log('[webrtc] answer sent')
             } else if (signal.type === 'answer' && isPlayer1) {
               await pc.setRemoteDescription({ type: 'answer', sdp: signal.sdp })
             } else if (signal.type === 'ice') {
@@ -115,15 +135,8 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
         .subscribe(async (status) => {
           console.log('[webrtc] signal channel status:', status, '| isPlayer1:', isPlayer1)
           if (status !== 'SUBSCRIBED' || !pc || aborted) return
-          if (isPlayer1) {
-            try {
-              const offer = await pc.createOffer()
-              await pc.setLocalDescription(offer)
-              signalChannel!.send({ type: 'broadcast', event: 'signal', payload: { type: 'offer', sdp: offer.sdp! } as WebRTCSignal })
-            } catch (err) {
-              console.error('[useWebRTC] offer error:', err)
-            }
-          }
+          await signalChannel!.track({ user_id: user.id })
+          console.log('[webrtc] presence tracked')
         })
     }
 
@@ -137,7 +150,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
       setConnected(false)
       if (signalChannel) supabase.removeChannel(signalChannel)
     }
-  }, [enabled, matchId, isPlayer1, canvasRef, onMessage])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, matchId, isPlayer1, user.id, canvasRef, onMessage])  // eslint-disable-line react-hooks/exhaustive-deps
 
   return { connected, sendMessage, remoteVideoRef }
 }
