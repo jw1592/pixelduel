@@ -31,3 +31,20 @@ export interface Match {
   status: 'active' | 'finished'
   created_at: string
 }
+
+export type PoseLandmark = { x: number; y: number; z: number; visibility?: number }
+
+export type GestureState = { isAttacking: boolean; isBlocking: boolean }
+
+export type GameMessage =
+  | { type: 'pose'; landmarks: PoseLandmark[]; t: number }
+  | { type: 'attack' }
+  | { type: 'hp'; value: number }
+  | { type: 'dead' }
+
+export type WebRTCSignal =
+  | { type: 'offer'; sdp: string }
+  | { type: 'answer'; sdp: string }
+  | { type: 'ice'; candidate: RTCIceCandidateInit }
+
+export type BattleStatus = 'connecting' | 'active' | 'victory' | 'defeat'
