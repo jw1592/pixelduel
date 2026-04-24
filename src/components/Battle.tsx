@@ -106,7 +106,7 @@ export function Battle({ user }: Props) {
   }, [sendMessage])
 
   useEffect(() => {
-    if (!isAI) startWebcam()
+    if (!isAI && !!routeState) startWebcam()
     return () => stopWebcam()
   }, [isAI, startWebcam, stopWebcam])
 
