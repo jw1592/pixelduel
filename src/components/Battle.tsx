@@ -69,6 +69,7 @@ export function Battle({ user }: Props) {
   const [opponentAfkCountdown, setOpponentAfkCountdown] = useState<number | null>(null)
   const afkAbsenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const afkCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const opponentAfkCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const iSentAfkWarningRef = useRef(false)
 
   // handleMessage must remain stable — useWebRTC re-registers the data channel handler on identity change
@@ -101,10 +102,11 @@ export function Battle({ user }: Props) {
       opponentAfkRef.current = true
       setOpponentAfk(true)
       setOpponentAfkCountdown(10)
-      const interval = setInterval(() => {
+      opponentAfkCountdownIntervalRef.current = setInterval(() => {
         setOpponentAfkCountdown(c => {
           if (c === null || c <= 1) {
-            clearInterval(interval)
+            clearInterval(opponentAfkCountdownIntervalRef.current!)
+            opponentAfkCountdownIntervalRef.current = null
             return null
           }
           return c - 1
@@ -114,6 +116,10 @@ export function Battle({ user }: Props) {
       opponentAfkRef.current = false
       setOpponentAfk(false)
       setOpponentAfkCountdown(null)
+      if (opponentAfkCountdownIntervalRef.current) {
+        clearInterval(opponentAfkCountdownIntervalRef.current)
+        opponentAfkCountdownIntervalRef.current = null
+      }
     }
   }, [user.id, matchId, latestLandmarksRef])
 
@@ -180,13 +186,19 @@ export function Battle({ user }: Props) {
     }
   }, [webcamStatus, isAI, navigate, latestLandmarksRef])
 
-  // Clear gate once pose first detected
+  // No dep array — runs every render to catch first pose detection via ref (refs don't trigger re-renders)
   useEffect(() => {
     if (latestLandmarksRef.current.length > 0 && presenceGateRef.current) {
       clearTimeout(presenceGateRef.current)
       presenceGateRef.current = null
     }
   })
+
+  useEffect(() => {
+    return () => {
+      if (opponentAfkCountdownIntervalRef.current) clearInterval(opponentAfkCountdownIntervalRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (battleStatus !== 'active' || isAI) return
@@ -321,7 +333,7 @@ export function Battle({ user }: Props) {
               <p className="text-gray-600 text-xs">Loading pose model...</p>
             </div>
           )}
-          {myAfkCountdown !== null && (
+          {battleStatus === 'active' && myAfkCountdown !== null && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80">
               <p className="text-red-400 text-xs text-center px-4">화면에서 인식되지 않습니다</p>
               <p className="text-white text-3xl">{myAfkCountdown}</p>
