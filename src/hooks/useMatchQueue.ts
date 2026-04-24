@@ -24,12 +24,17 @@ export function useMatchQueue(user: User, enabled: boolean) {
       return
     }
 
+    const payload = { match_id: data.id, player1_id: player1, player2_id: player2 }
+
     await channel.send({
       type: 'broadcast',
       event: 'match_ready',
-      payload: { match_id: data.id, player1_id: player1, player2_id: player2 },
+      payload,
     })
-  }, [user.id])
+
+    // Broadcaster doesn't receive own broadcast — navigate directly
+    navigate(`/battle/${data.id}`, { state: { player1_id: player1, player2_id: player2 } })
+  }, [user.id, navigate])
 
   useEffect(() => {
     if (!enabled) return
