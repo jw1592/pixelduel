@@ -93,10 +93,10 @@ export function Battle({ user }: Props) {
     } else if (msg.type === 'dead') {
       setBattleStatus('victory')
       if (matchId) {
-        supabase.from('matches')
+        void supabase.from('matches')
           .update({ status: 'finished', winner_id: user.id })
           .eq('id', matchId)
-          .catch(console.error)
+          .then(({ error }) => { if (error) console.error(error) })
       }
     } else if (msg.type === 'afk_warning') {
       opponentAfkRef.current = true
