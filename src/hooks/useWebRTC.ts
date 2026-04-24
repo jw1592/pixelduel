@@ -41,15 +41,22 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
       pc = new RTCPeerConnection({ iceServers })
       pcRef.current = pc
 
+      pc.oniceconnectionstatechange = () => console.log('[webrtc] ICE state:', pc?.iceConnectionState)
+      pc.onconnectionstatechange = () => console.log('[webrtc] connection state:', pc?.connectionState)
+
       // Add canvas stream (video only)
       const canvas = canvasRef.current
+      console.log('[webrtc] canvas:', canvas, '| isPlayer1:', isPlayer1)
       if (canvas) {
         const stream = (canvas as HTMLCanvasElement & { captureStream: (fps: number) => MediaStream }).captureStream(30)
-        stream.getVideoTracks().forEach(t => pc!.addTrack(t, stream))
+        const tracks = stream.getVideoTracks()
+        console.log('[webrtc] video tracks to add:', tracks.length)
+        tracks.forEach(t => pc!.addTrack(t, stream))
       }
 
       // Remote stream → video element
       pc.ontrack = (e) => {
+        console.log('[webrtc] ontrack fired — streams:', e.streams.length, 'tracks:', e.track.kind)
         if (remoteVideoRef.current && e.streams[0]) {
           remoteVideoRef.current.srcObject = e.streams[0]
         }
