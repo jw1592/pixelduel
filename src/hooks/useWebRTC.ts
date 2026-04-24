@@ -92,6 +92,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
         }
       }
 
+      console.log('[webrtc] subscribing to signal channel:', `signal-${matchId}`)
       signalChannel
         .on('broadcast', { event: 'signal' }, async ({ payload }) => {
           if (!pc) return
@@ -112,6 +113,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
           }
         })
         .subscribe(async (status) => {
+          console.log('[webrtc] signal channel status:', status, '| isPlayer1:', isPlayer1)
           if (status !== 'SUBSCRIBED' || !pc || aborted) return
           if (isPlayer1) {
             try {
