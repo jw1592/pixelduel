@@ -55,7 +55,9 @@ export function useMatchQueue(user: User, enabled: boolean) {
           player2_id: string
         }
         if (player1_id === user.id || player2_id === user.id) {
-          navigate(`/battle/${match_id}`)
+          navigate(`/battle/${match_id}`, {
+            state: { player1_id, player2_id },
+          })
         }
       })
       .subscribe(async (status) => {

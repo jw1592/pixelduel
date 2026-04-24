@@ -63,10 +63,19 @@ export function Battle({ user }: Props) {
 
   const sendMessageRef = useRef<((msg: GameMessage) => void) | null>(null)
 
+  const opponentAfkRef = useRef(false)
+  const [myAfkCountdown, setMyAfkCountdown] = useState<number | null>(null)
+  const [opponentAfk, setOpponentAfk] = useState(false)
+  const [opponentAfkCountdown, setOpponentAfkCountdown] = useState<number | null>(null)
+  const afkAbsenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const afkCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const iSentAfkWarningRef = useRef(false)
+
   // handleMessage must remain stable — useWebRTC re-registers the data channel handler on identity change
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleMessage = useCallback((msg: GameMessage) => {
     if (msg.type === 'attack') {
+      if (opponentAfkRef.current) return  // pause battle while opponent is AFK
       const isBlockingNow = isBlocking(latestLandmarksRef.current)
       const damage = isBlockingNow ? BLOCK_DAMAGE : HIT_DAMAGE
       setMyHp(prev => {
@@ -88,6 +97,23 @@ export function Battle({ user }: Props) {
           .eq('id', matchId)
           .catch(console.error)
       }
+    } else if (msg.type === 'afk_warning') {
+      opponentAfkRef.current = true
+      setOpponentAfk(true)
+      setOpponentAfkCountdown(10)
+      const interval = setInterval(() => {
+        setOpponentAfkCountdown(c => {
+          if (c === null || c <= 1) {
+            clearInterval(interval)
+            return null
+          }
+          return c - 1
+        })
+      }, 1000)
+    } else if (msg.type === 'afk_cancel') {
+      opponentAfkRef.current = false
+      setOpponentAfk(false)
+      setOpponentAfkCountdown(null)
     }
   }, [user.id, matchId, latestLandmarksRef])
 
@@ -140,6 +166,70 @@ export function Battle({ user }: Props) {
     }
     prevAttackingRef.current = gesture.isAttacking
   }, [gesture.isAttacking, sendMessage, battleStatus])
+
+  const presenceGateRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (webcamStatus !== 'granted' || isAI) return
+    presenceGateRef.current = setTimeout(() => {
+      if (latestLandmarksRef.current.length === 0) {
+        navigate('/')
+      }
+    }, 10000)
+    return () => {
+      if (presenceGateRef.current) clearTimeout(presenceGateRef.current)
+    }
+  }, [webcamStatus, isAI, navigate, latestLandmarksRef])
+
+  // Clear gate once pose first detected
+  useEffect(() => {
+    if (latestLandmarksRef.current.length > 0 && presenceGateRef.current) {
+      clearTimeout(presenceGateRef.current)
+      presenceGateRef.current = null
+    }
+  })
+
+  useEffect(() => {
+    if (battleStatus !== 'active' || isAI) return
+    const check = setInterval(() => {
+      const absent = latestLandmarksRef.current.length === 0
+      if (absent && !iSentAfkWarningRef.current) {
+        if (!afkAbsenceTimerRef.current) {
+          afkAbsenceTimerRef.current = setTimeout(() => {
+            iSentAfkWarningRef.current = true
+            sendMessageRef.current?.({ type: 'afk_warning' })
+            setMyAfkCountdown(10)
+            afkCountdownIntervalRef.current = setInterval(() => {
+              setMyAfkCountdown(c => {
+                if (c === null || c <= 1) {
+                  clearInterval(afkCountdownIntervalRef.current!)
+                  sendMessageRef.current?.({ type: 'dead' })
+                  setBattleStatus('defeat')
+                  return null
+                }
+                return c - 1
+              })
+            }, 1000)
+          }, 3000)
+        }
+      } else if (!absent && iSentAfkWarningRef.current) {
+        iSentAfkWarningRef.current = false
+        clearInterval(afkCountdownIntervalRef.current!)
+        afkCountdownIntervalRef.current = null
+        setMyAfkCountdown(null)
+        sendMessageRef.current?.({ type: 'afk_cancel' })
+      } else if (!absent) {
+        if (afkAbsenceTimerRef.current) {
+          clearTimeout(afkAbsenceTimerRef.current)
+          afkAbsenceTimerRef.current = null
+        }
+      }
+    }, 500)
+    return () => {
+      clearInterval(check)
+      if (afkAbsenceTimerRef.current) clearTimeout(afkAbsenceTimerRef.current)
+      if (afkCountdownIntervalRef.current) clearInterval(afkCountdownIntervalRef.current)
+    }
+  }, [battleStatus, isAI, latestLandmarksRef])  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isAI) {
     return (
@@ -208,6 +298,15 @@ export function Battle({ user }: Props) {
               <p className="text-gray-500 text-xs">Connecting...</p>
             </div>
           )}
+          {opponentAfk && opponentAfkCountdown !== null && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70">
+              <p className="text-yellow-400 text-xs text-center px-4">상대방이 자리에 없습니다</p>
+              <p className="text-white text-2xl">{opponentAfkCountdown}</p>
+              <p className="text-gray-400 text-xs text-center px-4">
+                {opponentAfkCountdown}초 후 자동 종료되고 승리로 기록됩니다
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -220,6 +319,15 @@ export function Battle({ user }: Props) {
           {poseStatus === 'loading' && (
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="text-gray-600 text-xs">Loading pose model...</p>
+            </div>
+          )}
+          {myAfkCountdown !== null && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80">
+              <p className="text-red-400 text-xs text-center px-4">화면에서 인식되지 않습니다</p>
+              <p className="text-white text-3xl">{myAfkCountdown}</p>
+              <p className="text-gray-400 text-xs text-center px-4">
+                {myAfkCountdown}초 후 패배로 기록됩니다
+              </p>
             </div>
           )}
           {battleStatus === 'active' && (
