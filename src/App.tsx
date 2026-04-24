@@ -4,6 +4,8 @@ import { useOnlineCount } from './hooks/useOnlineCount'
 import { LoginScreen } from './components/LoginScreen'
 import { Lobby } from './components/Lobby'
 import { Matchmaking } from './components/Matchmaking'
+import { Battle } from './components/Battle'
+import { ProfileEdit } from './components/ProfileEdit'
 
 function AuthGate() {
   const { user, loading, signInWithGoogle, signOut } = useAuth()
@@ -24,7 +26,10 @@ function AuthGate() {
   return (
     <Routes>
       <Route path="/" element={<Lobby user={user} onSignOut={signOut} onlineCount={onlineCount} />} />
+      <Route path="/profile" element={<ProfileEdit user={user} />} />
       <Route path="/matchmaking" element={<Matchmaking user={user} />} />
+      <Route path="/battle/:matchId" element={<Battle user={user} />} />
+      <Route path="/battle" element={<Battle user={user} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
