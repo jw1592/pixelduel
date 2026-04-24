@@ -1,11 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { useOnlineCount } from './hooks/useOnlineCount'
 import { LoginScreen } from './components/LoginScreen'
 import { Lobby } from './components/Lobby'
 import { Matchmaking } from './components/Matchmaking'
 
 function AuthGate() {
   const { user, loading, signInWithGoogle, signOut } = useAuth()
+  const onlineCount = useOnlineCount(user)
 
   if (loading) {
     return (
@@ -16,7 +18,7 @@ function AuthGate() {
   }
 
   if (!user) {
-    return <LoginScreen onLogin={signInWithGoogle} onlineCount={0} />
+    return <LoginScreen onLogin={signInWithGoogle} onlineCount={onlineCount} />
   }
 
   return (
