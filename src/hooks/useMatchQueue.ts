@@ -15,11 +15,14 @@ export function useMatchQueue(user: User, enabled: boolean) {
 
     const { data, error } = await supabase
       .from('matches')
-      .insert({ player1_id: player1, player2_id: player2 })
+      .insert({ player1_id: player1, player2_id: player2, status: 'active' })
       .select('id')
       .single()
 
-    if (error) return // Unique constraint hit — other side already created it
+    if (error) {
+      console.error('[matchqueue] createMatch error:', error)
+      return
+    }
 
     await channel.send({
       type: 'broadcast',
@@ -39,16 +42,19 @@ export function useMatchQueue(user: User, enabled: boolean) {
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState()
         const others = Object.keys(state).filter(k => k !== user.id)
+        console.log('[matchqueue] presence sync — state keys:', Object.keys(state), '| others:', others)
 
         if (others.length === 0) return
 
         // Deterministic: player with smaller UUID initiates to avoid double-creation
         const opponent = others.sort()[0]
+        console.log('[matchqueue] opponent found:', opponent, '| I initiate:', user.id < opponent)
         if (user.id < opponent) {
           createMatch(channel, opponent)
         }
       })
       .on('broadcast', { event: 'match_ready' }, ({ payload }) => {
+        console.log('[matchqueue] match_ready received:', payload)
         const { match_id, player1_id, player2_id } = payload as {
           match_id: string
           player1_id: string
@@ -61,8 +67,10 @@ export function useMatchQueue(user: User, enabled: boolean) {
         }
       })
       .subscribe(async (status) => {
+        console.log('[matchqueue] channel status:', status)
         if (status === 'SUBSCRIBED') {
           await channel.track({ user_id: user.id })
+          console.log('[matchqueue] tracked user:', user.id)
         }
       })
 

@@ -6,7 +6,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useMatchQueue } from '../hooks/useMatchQueue'
 import { AI_CHARACTERS } from '../data/aiCharacters'
 
-const AI_FALLBACK_SECONDS = 5
+const AI_FALLBACK_SECONDS = 30
 
 interface Props {
   user: User
