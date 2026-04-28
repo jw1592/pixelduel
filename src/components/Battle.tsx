@@ -8,6 +8,8 @@ import { usePoseLandmarker } from '../hooks/usePoseLandmarker'
 import { useCharacterCanvas } from '../hooks/useCharacterCanvas'
 import { useCombatGestures, isBlocking } from '../hooks/useCombatGestures'
 import { useWebRTC } from '../hooks/useWebRTC'
+import { useAIOpponent } from '../hooks/useAIOpponent'
+import { useLightsaberSound } from '../hooks/useLightsaberSound'
 import type { GameMessage, BattleStatus } from '../types'
 
 const MAX_HP = 100
@@ -44,13 +46,12 @@ export function Battle({ user }: Props) {
   const { matchId } = useParams<{ matchId: string }>()
   const location = useLocation()
   const isAI = matchId === 'ai'
-  const aiOpponent = (location.state as { opponent?: string } | null)?.opponent
   const routeState = (location.state as BattleRouteState | null)
 
   const { profile } = useProfile(user)
   const [myHp, setMyHp] = useState(MAX_HP)
   const [opponentHp, setOpponentHp] = useState(MAX_HP)
-  const [battleStatus, setBattleStatus] = useState<BattleStatus>('connecting')
+  const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
 
   const { videoRef, status: webcamStatus, start: startWebcam, stop: stopWebcam } = useWebcam()
   const { status: poseStatus, detectLoop } = usePoseLandmarker(videoRef)
@@ -62,6 +63,22 @@ export function Battle({ user }: Props) {
   const { gesture, update: updateGestures } = useCombatGestures(latestLandmarksRef)
 
   const sendMessageRef = useRef<((msg: GameMessage) => void) | null>(null)
+  const { startHum, stopHum, playSwing, playHit } = useLightsaberSound()
+  const playHitRef = useRef(playHit)
+  useEffect(() => { playHitRef.current = playHit }, [playHit])
+
+  const aiCanvasRef = useRef<HTMLCanvasElement>(null)
+  const { aiHp, aiName, receiveAttack } = useAIOpponent({
+    enabled: isAI,
+    profile,
+    canvasRef: aiCanvasRef,
+    onAIAttack: () => {
+      playHitRef.current()
+      const blocking = isBlocking(latestLandmarksRef.current)
+      const damage = blocking ? BLOCK_DAMAGE : HIT_DAMAGE
+      setMyHp(prev => Math.max(0, prev - damage))
+    },
+  })
 
   const opponentAfkRef = useRef(false)
   const [myAfkCountdown, setMyAfkCountdown] = useState<number | null>(null)
@@ -76,6 +93,7 @@ export function Battle({ user }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleMessage = useCallback((msg: GameMessage) => {
     if (msg.type === 'attack') {
+      playHitRef.current()
       if (opponentAfkRef.current) return  // pause battle while opponent is AFK
       const isBlockingNow = isBlocking(latestLandmarksRef.current)
       const damage = isBlockingNow ? BLOCK_DAMAGE : HIT_DAMAGE
@@ -138,19 +156,35 @@ export function Battle({ user }: Props) {
   }, [sendMessage])
 
   useEffect(() => {
-    if (!isAI && !!routeState) startWebcam()
+    if (isAI || !!routeState) startWebcam()
     return () => stopWebcam()
   }, [isAI, startWebcam, stopWebcam])
 
   useEffect(() => {
-    if (connected) setBattleStatus('active')
-  }, [connected])
+    if (connected) {
+      setBattleStatus('active')
+      startHum()
+    }
+    return () => stopHum()
+  }, [connected, startHum, stopHum])
+
+  useEffect(() => {
+    if (!isAI) return
+    startHum()
+    return () => stopHum()
+  }, [isAI, startHum, stopHum])
 
   useEffect(() => {
     if (myHp === 0 && battleStatus === 'active') {
       setBattleStatus('defeat')
     }
   }, [myHp, battleStatus])
+
+  useEffect(() => {
+    if (aiHp === 0 && battleStatus === 'active') {
+      setBattleStatus('victory')
+    }
+  }, [aiHp, battleStatus])
 
   useEffect(() => {
     if (battleStatus === 'victory' || battleStatus === 'defeat') {
@@ -168,10 +202,15 @@ export function Battle({ user }: Props) {
   const prevAttackingRef = useRef(false)
   useEffect(() => {
     if (gesture.isAttacking && !prevAttackingRef.current && battleStatus === 'active') {
-      sendMessage({ type: 'attack' })
+      if (isAI) {
+        receiveAttack()
+      } else {
+        sendMessage({ type: 'attack' })
+      }
+      playSwing()
     }
     prevAttackingRef.current = gesture.isAttacking
-  }, [gesture.isAttacking, sendMessage, battleStatus])
+  }, [gesture.isAttacking, sendMessage, battleStatus, playSwing, isAI, receiveAttack])
 
   const presenceGateRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -242,22 +281,6 @@ export function Battle({ user }: Props) {
       if (afkCountdownIntervalRef.current) clearInterval(afkCountdownIntervalRef.current)
     }
   }, [battleStatus, isAI, latestLandmarksRef])  // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (isAI) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-4">
-        <h1 className="text-green-400 text-2xl leading-loose text-center">PIXEL<br/>DUEL</h1>
-        <div className="border border-gray-700 p-8 flex flex-col items-center gap-4 w-80 text-center">
-          <p className="text-yellow-400 text-xs">AI MATCH</p>
-          <p className="text-white text-sm mt-2">{aiOpponent}</p>
-          <p className="text-gray-500 text-xs mt-4">AI battle coming in Phase 2C.</p>
-        </div>
-        <button onClick={() => navigate('/')} className="text-gray-600 hover:text-gray-400 text-xs border border-gray-700 px-6 py-3 cursor-pointer transition-colors">
-          Back to Lobby
-        </button>
-      </div>
-    )
-  }
 
   if (battleStatus === 'victory' || battleStatus === 'defeat') {
     return (
@@ -330,30 +353,46 @@ export function Battle({ user }: Props) {
       {/* Right: Opponent */}
       <div className="flex-1 flex flex-col">
         <div className="flex-1 relative bg-gray-900">
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
-          {battleStatus === 'connecting' && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-gray-500 text-xs">Connecting...</p>
-            </div>
-          )}
-          {opponentAfk && opponentAfkCountdown !== null && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70">
-              <p className="text-yellow-400 text-xs text-center px-4">상대방이 자리에 없습니다</p>
-              <p className="text-white text-2xl">{opponentAfkCountdown}</p>
-              <p className="text-gray-400 text-xs text-center px-4">
-                {opponentAfkCountdown}초 후 자동 종료되고 승리로 기록됩니다
-              </p>
-            </div>
+          {isAI ? (
+            <>
+              <canvas
+                ref={aiCanvasRef}
+                width={640}
+                height={480}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-2 left-0 right-0 flex justify-center">
+                <span className="text-xs text-gray-500">{aiName.toUpperCase()}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              {battleStatus === 'connecting' && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-gray-500 text-xs">Connecting...</p>
+                </div>
+              )}
+              {opponentAfk && opponentAfkCountdown !== null && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70">
+                  <p className="text-yellow-400 text-xs text-center px-4">상대방이 자리에 없습니다</p>
+                  <p className="text-white text-2xl">{opponentAfkCountdown}</p>
+                  <p className="text-gray-400 text-xs text-center px-4">
+                    {opponentAfkCountdown}초 후 자동 종료되고 승리로 기록됩니다
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
         <div className="py-2">
-          <HpBar hp={opponentHp} label="OPPONENT" flip />
+          <HpBar hp={isAI ? aiHp : opponentHp} label={isAI ? aiName.toUpperCase() : 'OPPONENT'} flip />
         </div>
       </div>
     </div>
