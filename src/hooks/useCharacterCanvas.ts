@@ -25,14 +25,14 @@ function drawCharacter(
   landmarks: PoseLandmark[],
   avatarImg: HTMLImageElement | null,
   w: number,
-  h: number
+  h: number,
+  colors?: { skin?: string; shirt?: string; pants?: string }
 ) {
   if (landmarks.length < 29) return
 
-  const SKIN = '#c8966b'
-  const SHIRT = '#4a5568'
-  const PANTS = '#2b3a8a'
-  const SWORD = '#d4d4d4'
+  const SKIN = colors?.skin ?? '#c8966b'
+  const SHIRT = colors?.shirt ?? '#4a5568'
+  const PANTS = colors?.pants ?? '#2b3a8a'
 
   const lShoulder = lm2px(landmarks[11], w, h)
   const rShoulder = lm2px(landmarks[12], w, h)
@@ -67,17 +67,34 @@ function drawCharacter(
   drawSegment(ctx, rHip, rKnee, limbThick, PANTS)
   drawSegment(ctx, rKnee, rAnkle, limbThick, PANTS)
 
-  // Sword on right hand
+  // Lightsaber on right hand
   const forearmDx = rWrist.x - rElbow.x
   const forearmDy = rWrist.y - rElbow.y
   const forearmLen = Math.hypot(forearmDx, forearmDy)
   if (forearmLen > 0) {
-    const swordLen = forearmLen * 2.2
     const nx = forearmDx / forearmLen
     const ny = forearmDy / forearmLen
-    const swordTip: Point = { x: rWrist.x + nx * swordLen, y: rWrist.y + ny * swordLen }
-    drawSegment(ctx, rWrist, swordTip, 10, SWORD)
-    drawSegment(ctx, rWrist, swordTip, 5, '#ffffff')
+    const bladeLen = forearmLen * 2.5
+    const bladeTip: Point = { x: rWrist.x + nx * bladeLen, y: rWrist.y + ny * bladeLen }
+
+    // Blade: layered glow (outer → inner → white core)
+    ctx.save()
+    ctx.globalAlpha = 0.10; drawSegment(ctx, rWrist, bladeTip, 36, '#2255cc')
+    ctx.globalAlpha = 0.22; drawSegment(ctx, rWrist, bladeTip, 24, '#3366ee')
+    ctx.globalAlpha = 0.45; drawSegment(ctx, rWrist, bladeTip, 14, '#5588ff')
+    ctx.globalAlpha = 0.75; drawSegment(ctx, rWrist, bladeTip, 7, '#99bbff')
+    ctx.globalAlpha = 1.00; drawSegment(ctx, rWrist, bladeTip, 3, '#ffffff')
+    ctx.restore()
+
+    // Hilt (handle behind the wrist)
+    const hiltLen = forearmLen * 0.45
+    const hiltStart: Point = { x: rWrist.x - nx * hiltLen, y: rWrist.y - ny * hiltLen }
+    drawSegment(ctx, hiltStart, rWrist, 14, '#1a1a2e')
+    drawSegment(ctx, hiltStart, rWrist, 10, '#2a2a4a')
+    // Emitter collar (bright ring where blade meets hilt)
+    const emitA: Point = { x: rWrist.x - nx * 5, y: rWrist.y - ny * 5 }
+    const emitB: Point = { x: rWrist.x + nx * 5, y: rWrist.y + ny * 5 }
+    drawSegment(ctx, emitA, emitB, 16, '#334466')
   }
 
   // Head (avatar image or fallback colored block)
