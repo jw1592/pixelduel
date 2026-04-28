@@ -19,6 +19,7 @@ function makePose(
   lms[14] = { x: rElbow[0],    y: rElbow[1],    z: 0 }
   lms[15] = { x: lWrist[0],    y: lWrist[1],    z: 0 }
   lms[16] = { x: rWrist[0],    y: rWrist[1],    z: 0 }
+  // hips [23-24], knees [25-26], ankles [27-28] — fixed stance, same across all poses
   lms[23] = { x: 0.40, y: 0.58, z: 0 }
   lms[24] = { x: 0.60, y: 0.58, z: 0 }
   lms[25] = { x: 0.40, y: 0.76, z: 0 }
