@@ -165,8 +165,8 @@ export function Battle({ user }: Props) {
       setBattleStatus('active')
       startHum()
     }
-    return () => stopHum()
-  }, [connected, startHum, stopHum])
+    return () => { if (!isAI) stopHum() }
+  }, [connected, isAI, startHum, stopHum])
 
   useEffect(() => {
     if (!isAI) return
@@ -181,10 +181,11 @@ export function Battle({ user }: Props) {
   }, [myHp, battleStatus])
 
   useEffect(() => {
+    if (!isAI) return
     if (aiHp === 0 && battleStatus === 'active') {
       setBattleStatus('victory')
     }
-  }, [aiHp, battleStatus])
+  }, [isAI, aiHp, battleStatus])
 
   useEffect(() => {
     if (battleStatus === 'victory' || battleStatus === 'defeat') {
