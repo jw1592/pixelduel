@@ -49,6 +49,8 @@ export function Battle({ user }: Props) {
   const routeState = (location.state as BattleRouteState | null)
 
   const { profile } = useProfile(user)
+  const profileRef = useRef(profile)
+  useEffect(() => { profileRef.current = profile }, [profile])
   const [myHp, setMyHp] = useState(MAX_HP)
   const [opponentHp, setOpponentHp] = useState(MAX_HP)
   const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
@@ -197,10 +199,18 @@ export function Battle({ user }: Props) {
 
   useEffect(() => {
     if (battleStatus === 'victory' || battleStatus === 'defeat') {
+      if (!isAI && profileRef.current) {
+        const p = profileRef.current
+        if (battleStatus === 'victory') {
+          void supabase.from('profiles').update({ wins: p.wins + 1 }).eq('id', user.id)
+        } else {
+          void supabase.from('profiles').update({ losses: p.losses + 1 }).eq('id', user.id)
+        }
+      }
       const t = setTimeout(() => navigate('/'), 3000)
       return () => clearTimeout(t)
     }
-  }, [battleStatus, navigate])
+  }, [battleStatus, isAI, user.id, navigate])
 
   useEffect(() => {
     if (battleStatus !== 'active') return
