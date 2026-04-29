@@ -22,9 +22,13 @@ const MOB_COLORS: Record<string, { skin: string; shirt: string; pants: string }>
 
 export function getDifficulty(wins: number, losses: number) {
   const winRate = wins / (wins + losses + 1)
-  if (winRate < 0.3) return { attackInterval: 1800, blockChance: 0.40 }
-  if (winRate < 0.6) return { attackInterval: 1100, blockChance: 0.60 }
-  return               { attackInterval: 700,  blockChance: 0.80 }
+  if (winRate < 0.3) return { minInterval: 1200, maxInterval: 2800, blockChance: 0.40 }
+  if (winRate < 0.6) return { minInterval: 700,  maxInterval: 1600, blockChance: 0.60 }
+  return               { minInterval: 400,  maxInterval: 900,  blockChance: 0.80 }
+}
+
+function randInterval(min: number, max: number): number {
+  return min + Math.random() * (max - min)
 }
 
 function lerpLandmarks(from: PoseLandmark[], to: PoseLandmark[], t: number): PoseLandmark[] {
@@ -94,17 +98,24 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
     if (!enabled) return
     const wins = profile?.wins ?? 0
     const losses = profile?.losses ?? 0
-    const { attackInterval, blockChance } = getDifficulty(wins, losses)
+    const { minInterval, maxInterval, blockChance } = getDifficulty(wins, losses)
     blockChanceRef.current = blockChance
 
-    const id = setInterval(() => {
-      if (aiHpRef.current <= 0) return
-      transitionPose(ATTACK_POSE)
-      setTimeout(() => { if (mountedRef.current) onAIAttackRef.current() }, 300)
-      setTimeout(() => { if (mountedRef.current) transitionPose(IDLE_POSE) }, 600)
-    }, attackInterval)
+    let timerId: ReturnType<typeof setTimeout>
+    const scheduleNext = () => {
+      timerId = setTimeout(() => {
+        if (!mountedRef.current) return
+        if (aiHpRef.current > 0) {
+          transitionPose(ATTACK_POSE)
+          setTimeout(() => { if (mountedRef.current) onAIAttackRef.current() }, 300)
+          setTimeout(() => { if (mountedRef.current) transitionPose(IDLE_POSE) }, 600)
+        }
+        scheduleNext()
+      }, randInterval(minInterval, maxInterval))
+    }
+    scheduleNext()
 
-    return () => clearInterval(id)
+    return () => clearTimeout(timerId)
   }, [enabled, profile, transitionPose])
 
   const receiveAttack = useCallback(() => {
