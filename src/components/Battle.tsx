@@ -13,8 +13,8 @@ import { useLightsaberSound } from '../hooks/useLightsaberSound'
 import type { GameMessage, BattleStatus } from '../types'
 
 const MAX_HP = 100
-const HIT_DAMAGE = 25
-const BLOCK_DAMAGE = 5
+const HIT_DAMAGE = 10
+const BLOCK_DAMAGE = 3
 
 interface Props {
   user: User
