@@ -1,8 +1,21 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
 
 export function useLightsaberSound() {
   const ctxRef = useRef<AudioContext | null>(null)
   const humStopRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    const unlock = () => {
+      if (!ctxRef.current) ctxRef.current = new AudioContext()
+      if (ctxRef.current.state === 'suspended') ctxRef.current.resume()
+    }
+    document.addEventListener('touchstart', unlock, { once: true, passive: true })
+    document.addEventListener('click', unlock, { once: true })
+    return () => {
+      document.removeEventListener('touchstart', unlock)
+      document.removeEventListener('click', unlock)
+    }
+  }, [])
 
   const getCtx = useCallback((): AudioContext => {
     if (!ctxRef.current) ctxRef.current = new AudioContext()

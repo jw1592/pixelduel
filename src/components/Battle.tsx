@@ -52,6 +52,8 @@ export function Battle({ user }: Props) {
   const [myHp, setMyHp] = useState(MAX_HP)
   const [opponentHp, setOpponentHp] = useState(MAX_HP)
   const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
+  const [myFlash, setMyFlash] = useState(false)
+  const [opponentFlash, setOpponentFlash] = useState(false)
 
   const { videoRef, status: webcamStatus, start: startWebcam, stop: stopWebcam } = useWebcam()
   const { status: poseStatus, detectLoop } = usePoseLandmarker(videoRef)
@@ -77,6 +79,9 @@ export function Battle({ user }: Props) {
       const blocking = isBlocking(latestLandmarksRef.current)
       const damage = blocking ? BLOCK_DAMAGE : HIT_DAMAGE
       setMyHp(prev => Math.max(0, prev - damage))
+      setMyFlash(true)
+      setTimeout(() => setMyFlash(false), 200)
+      navigator.vibrate?.(80)
     },
   })
 
@@ -97,6 +102,9 @@ export function Battle({ user }: Props) {
       if (opponentAfkRef.current) return  // pause battle while opponent is AFK
       const isBlockingNow = isBlocking(latestLandmarksRef.current)
       const damage = isBlockingNow ? BLOCK_DAMAGE : HIT_DAMAGE
+      setMyFlash(true)
+      setTimeout(() => setMyFlash(false), 200)
+      navigator.vibrate?.(80)
       setMyHp(prev => {
         const next = Math.max(0, prev - damage)
         if (next > 0) {
@@ -209,6 +217,8 @@ export function Battle({ user }: Props) {
         sendMessage({ type: 'attack' })
       }
       playSwing()
+      setOpponentFlash(true)
+      setTimeout(() => setOpponentFlash(false), 150)
     }
     prevAttackingRef.current = gesture.isAttacking
   }, [gesture.isAttacking, sendMessage, battleStatus, playSwing, isAI, receiveAttack])
@@ -314,7 +324,7 @@ export function Battle({ user }: Props) {
   }
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col md:flex-row bg-black">
+    <div className="overflow-hidden flex flex-col md:flex-row bg-black" style={{ height: '100dvh' }}>
       <video ref={videoRef} className="hidden" playsInline muted />
 
       {/* Left: Me */}
@@ -337,6 +347,9 @@ export function Battle({ user }: Props) {
                 {myAfkCountdown}초 후 패배로 기록됩니다
               </p>
             </div>
+          )}
+          {myFlash && (
+            <div className="absolute inset-0 pointer-events-none bg-red-500/50 transition-opacity" />
           )}
           {battleStatus === 'active' && (
             <div className="absolute bottom-2 left-2">
@@ -362,6 +375,9 @@ export function Battle({ user }: Props) {
                 height={480}
                 className="w-full h-full object-cover"
               />
+              {opponentFlash && (
+                <div className="absolute inset-0 pointer-events-none bg-orange-400/50 transition-opacity" />
+              )}
               <div className="absolute top-2 left-0 right-0 flex justify-center">
                 <span className="text-xs text-gray-500">{aiName.toUpperCase()}</span>
               </div>
@@ -375,6 +391,9 @@ export function Battle({ user }: Props) {
                 muted
                 className="w-full h-full object-cover"
               />
+              {opponentFlash && (
+                <div className="absolute inset-0 pointer-events-none bg-orange-400/50 transition-opacity" />
+              )}
               {battleStatus === 'connecting' && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <p className="text-gray-500 text-xs">Connecting...</p>

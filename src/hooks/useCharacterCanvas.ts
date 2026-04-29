@@ -109,6 +109,8 @@ function drawCharacter(
   }
 }
 
+const DISPLAY_SCALE = 0.75
+
 interface Props {
   videoRef: React.RefObject<HTMLVideoElement | null>
   avatarUrl: string | null
@@ -145,15 +147,30 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop }: Props) {
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    // Mirror the webcam feed as background
+
+    const S = DISPLAY_SCALE
+    const scaledW = w * S
+    const scaledH = h * S
+    const offsetX = (w - scaledW) / 2
+    const offsetY = (h - scaledH) / 2
+
+    ctx.fillStyle = '#000'
+    ctx.fillRect(0, 0, w, h)
+
+    // Mirror the webcam feed, scaled to 75% and centered
     ctx.save()
     ctx.scale(-1, 1)
-    ctx.drawImage(video, -w, 0, w, h)
+    ctx.drawImage(video, -(offsetX + scaledW), offsetY, scaledW, scaledH)
     ctx.restore()
 
-    // Overlay character (landmarks are already mirrored since FacingMode=user mirrors the feed)
-    const mirrored = landmarks.map(lm => ({ ...lm, x: 1 - lm.x }))
-    drawCharacter(ctx, mirrored, avatarImgRef.current, w, h)
+    // Landmarks adjusted for scale + centering + mirroring
+    const off = (1 - S) / 2
+    const adjusted = landmarks.map(lm => ({
+      ...lm,
+      x: off + (1 - lm.x) * S,
+      y: off + lm.y * S,
+    }))
+    drawCharacter(ctx, adjusted, avatarImgRef.current, w, h)
   }, [videoRef])
 
   useEffect(() => {
