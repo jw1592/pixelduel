@@ -210,7 +210,7 @@ export function Battle({ user }: Props) {
             .eq('id', user.id)
         })
         .then(res => { if (res?.error) console.error('stat update error:', res.error) })
-      const t = setTimeout(() => navigate('/'), 3000)
+      const t = setTimeout(() => navigate('/'), 6000)
       return () => clearTimeout(t)
     }
   }, [battleStatus, user.id, navigate])
@@ -308,19 +308,19 @@ export function Battle({ user }: Props) {
 
   if (battleStatus === 'victory' || battleStatus === 'defeat') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 bg-black">
-        {battleStatus === 'victory' ? (
-          <>
-            <DotLottieReact src={VICTORY_LOTTIE} autoplay loop={false} style={{ width: 280, height: 280 }} />
-            <p className="text-yellow-400 text-4xl font-bold">VICTORY</p>
-          </>
-        ) : (
-          <>
-            <DotLottieReact src={DEFEAT_LOTTIE} autoplay loop={false} style={{ width: 280, height: 280 }} />
-            <p className="text-red-500 text-4xl font-bold">DEFEAT</p>
-          </>
-        )}
-        <p className="text-gray-500 text-xs mt-2">Returning to lobby...</p>
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center">
+        <DotLottieReact
+          src={battleStatus === 'victory' ? VICTORY_LOTTIE : DEFEAT_LOTTIE}
+          autoplay
+          loop={false}
+          style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
+        />
+        <div className="relative z-10 flex flex-col items-center gap-3">
+          <p className={`text-5xl font-bold ${battleStatus === 'victory' ? 'text-yellow-400' : 'text-red-500'}`}>
+            {battleStatus === 'victory' ? 'VICTORY' : 'DEFEAT'}
+          </p>
+          <p className="text-gray-400 text-xs">Returning to lobby...</p>
+        </div>
       </div>
     )
   }
