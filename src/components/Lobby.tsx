@@ -87,7 +87,7 @@ export function Lobby({ user, onSignOut, onlineCount }: Props) {
         onClick={() => navigate('/matchmaking')}
         className="bg-green-500 hover:bg-green-400 text-black text-xs px-8 py-4 transition-colors cursor-pointer font-bold"
       >
-        ⚔ FIND OPPONENT
+        ⚔ START BATTLE
       </button>
 
       <button
