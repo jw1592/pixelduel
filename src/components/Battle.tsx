@@ -351,10 +351,10 @@ export function Battle({ user }: Props) {
           )}
           {battleStatus === 'active' && myAfkCountdown !== null && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80">
-              <p className="text-red-400 text-xs text-center px-4">화면에서 인식되지 않습니다</p>
+              <p className="text-red-400 text-xs text-center px-4">You are not detected on screen</p>
               <p className="text-white text-3xl">{myAfkCountdown}</p>
               <p className="text-gray-400 text-xs text-center px-4">
-                {myAfkCountdown}초 후 패배로 기록됩니다
+                Defeat in {myAfkCountdown}s
               </p>
             </div>
           )}
@@ -411,10 +411,10 @@ export function Battle({ user }: Props) {
               )}
               {opponentAfk && opponentAfkCountdown !== null && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70">
-                  <p className="text-yellow-400 text-xs text-center px-4">상대방이 자리에 없습니다</p>
+                  <p className="text-yellow-400 text-xs text-center px-4">Opponent is away</p>
                   <p className="text-white text-2xl">{opponentAfkCountdown}</p>
                   <p className="text-gray-400 text-xs text-center px-4">
-                    {opponentAfkCountdown}초 후 자동 종료되고 승리로 기록됩니다
+                    Victory in {opponentAfkCountdown}s
                   </p>
                 </div>
               )}

@@ -83,11 +83,11 @@ export function Matchmaking({ user }: Props) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4">
         <h1 className="text-green-400 text-xl leading-loose text-center">PIXEL<br/>DUEL</h1>
-        <p className="text-gray-500 text-xs">대전 상대를 찾지 못했습니다</p>
-        <p className="text-yellow-400 text-xs">AI 연습 게임으로 전환합니다</p>
-        <p className="text-gray-600 text-xs">전적 기록에 포함되지 않습니다</p>
+        <p className="text-gray-500 text-xs">No opponent found</p>
+        <p className="text-yellow-400 text-xs">Switching to AI practice match</p>
+        <p className="text-gray-600 text-xs">This match will not affect your record</p>
         <p className="text-white text-4xl">{aiCountdown}</p>
-        <p className="text-gray-500 text-xs">준비하세요...</p>
+        <p className="text-gray-500 text-xs">Get ready...</p>
       </div>
     )
   }
