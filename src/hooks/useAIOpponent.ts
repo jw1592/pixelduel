@@ -22,9 +22,9 @@ const MOB_COLORS: Record<string, { skin: string; shirt: string; pants: string }>
 
 export function getDifficulty(wins: number, losses: number) {
   const winRate = wins / (wins + losses + 1)
-  if (winRate < 0.3) return { attackInterval: 3500, blockChance: 0.15 }
-  if (winRate < 0.6) return { attackInterval: 2200, blockChance: 0.35 }
-  return               { attackInterval: 1300, blockChance: 0.60 }
+  if (winRate < 0.3) return { attackInterval: 1800, blockChance: 0.40 }
+  if (winRate < 0.6) return { attackInterval: 1100, blockChance: 0.60 }
+  return               { attackInterval: 700,  blockChance: 0.80 }
 }
 
 function lerpLandmarks(from: PoseLandmark[], to: PoseLandmark[], t: number): PoseLandmark[] {
