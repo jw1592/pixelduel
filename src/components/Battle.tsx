@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
+import { DotLottieReact } from '@lottiefiles/dotlottie-react'
 import { supabase } from '../lib/supabase'
 import { useProfile } from '../hooks/useProfile'
 import { useWebcam } from '../hooks/useWebcam'
@@ -11,6 +12,9 @@ import { useWebRTC } from '../hooks/useWebRTC'
 import { useAIOpponent } from '../hooks/useAIOpponent'
 import { useLightsaberSound } from '../hooks/useLightsaberSound'
 import type { GameMessage, BattleStatus } from '../types'
+
+const VICTORY_LOTTIE = 'https://assets-v2.lottiefiles.com/a/79e175d2-1174-11ee-9fca-272a6738b821/JYhWAkgfAS.lottie'
+const DEFEAT_LOTTIE  = 'https://assets-v2.lottiefiles.com/a/d79b76c8-1188-11ee-871d-bbbb54647fa9/kQzCXiJdZ0.lottie'
 
 const MAX_HP = 100
 const HIT_DAMAGE = 10
@@ -304,12 +308,19 @@ export function Battle({ user }: Props) {
 
   if (battleStatus === 'victory' || battleStatus === 'defeat') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4">
-        <h1 className="text-green-400 text-2xl leading-loose text-center">PIXEL<br/>DUEL</h1>
-        <p className={`text-4xl font-bold ${battleStatus === 'victory' ? 'text-yellow-400' : 'text-red-500'}`}>
-          {battleStatus === 'victory' ? 'VICTORY' : 'DEFEAT'}
-        </p>
-        <p className="text-gray-500 text-xs">Returning to lobby...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 bg-black">
+        {battleStatus === 'victory' ? (
+          <>
+            <DotLottieReact src={VICTORY_LOTTIE} autoplay loop={false} style={{ width: 280, height: 280 }} />
+            <p className="text-yellow-400 text-4xl font-bold">VICTORY</p>
+          </>
+        ) : (
+          <>
+            <DotLottieReact src={DEFEAT_LOTTIE} autoplay loop={false} style={{ width: 280, height: 280 }} />
+            <p className="text-red-500 text-4xl font-bold">DEFEAT</p>
+          </>
+        )}
+        <p className="text-gray-500 text-xs mt-2">Returning to lobby...</p>
       </div>
     )
   }
