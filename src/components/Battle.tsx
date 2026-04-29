@@ -314,7 +314,7 @@ export function Battle({ user }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex flex-row bg-black">
+    <div className="min-h-screen flex flex-col md:flex-row bg-black">
       <video ref={videoRef} className="hidden" playsInline muted />
 
       {/* Left: Me */}
