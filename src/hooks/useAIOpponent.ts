@@ -6,8 +6,8 @@ import { IDLE_POSE, ATTACK_POSE, BLOCK_POSE } from '../data/aiPoses'
 import { drawCharacter } from './useCharacterCanvas'
 
 const MAX_HP = 100
-const HIT_DAMAGE = 25
-const BLOCK_DAMAGE = 5
+const HIT_DAMAGE = 10
+const BLOCK_DAMAGE = 3
 const LERP_DURATION = 250
 
 const MOB_COLORS: Record<string, { skin: string; shirt: string; pants: string }> = {
