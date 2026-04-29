@@ -49,8 +49,6 @@ export function Battle({ user }: Props) {
   const routeState = (location.state as BattleRouteState | null)
 
   const { profile } = useProfile(user)
-  const profileRef = useRef(profile)
-  useEffect(() => { profileRef.current = profile }, [profile])
   const [myHp, setMyHp] = useState(MAX_HP)
   const [opponentHp, setOpponentHp] = useState(MAX_HP)
   const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
@@ -199,18 +197,19 @@ export function Battle({ user }: Props) {
 
   useEffect(() => {
     if (battleStatus === 'victory' || battleStatus === 'defeat') {
-      if (!isAI && profileRef.current) {
-        const p = profileRef.current
-        if (battleStatus === 'victory') {
-          void supabase.from('profiles').update({ wins: p.wins + 1 }).eq('id', user.id)
-        } else {
-          void supabase.from('profiles').update({ losses: p.losses + 1 }).eq('id', user.id)
-        }
-      }
+      const col = battleStatus === 'victory' ? 'wins' : 'losses'
+      supabase.from('profiles').select(col).eq('id', user.id).single()
+        .then(({ data, error }) => {
+          if (error || !data) { console.error('stat fetch error:', error); return }
+          return supabase.from('profiles')
+            .update({ [col]: (data[col as keyof typeof data] as number) + 1 })
+            .eq('id', user.id)
+        })
+        .then(res => { if (res?.error) console.error('stat update error:', res.error) })
       const t = setTimeout(() => navigate('/'), 3000)
       return () => clearTimeout(t)
     }
-  }, [battleStatus, isAI, user.id, navigate])
+  }, [battleStatus, user.id, navigate])
 
   useEffect(() => {
     if (battleStatus !== 'active') return

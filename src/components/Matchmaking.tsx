@@ -85,7 +85,7 @@ export function Matchmaking({ user }: Props) {
         <h1 className="text-green-400 text-xl leading-loose text-center">PIXEL<br/>DUEL</h1>
         <p className="text-gray-500 text-xs">No opponent found</p>
         <p className="text-yellow-400 text-xs">Switching to AI practice match</p>
-        <p className="text-gray-600 text-xs">This match will not affect your record</p>
+        <p className="text-gray-600 text-xs">Results will be recorded</p>
         <p className="text-white text-4xl">{aiCountdown}</p>
         <p className="text-gray-500 text-xs">Get ready...</p>
       </div>
