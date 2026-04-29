@@ -314,7 +314,7 @@ export function Battle({ user }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-black">
+    <div className="h-screen overflow-hidden flex flex-col md:flex-row bg-black">
       <video ref={videoRef} className="hidden" playsInline muted />
 
       {/* Left: Me */}
@@ -346,7 +346,7 @@ export function Battle({ user }: Props) {
             </div>
           )}
         </div>
-        <div className="py-2">
+        <div className="flex-shrink-0 py-2">
           <HpBar hp={myHp} label="YOU" />
         </div>
       </div>
@@ -392,7 +392,7 @@ export function Battle({ user }: Props) {
             </>
           )}
         </div>
-        <div className="py-2">
+        <div className="flex-shrink-0 py-2">
           <HpBar hp={isAI ? aiHp : opponentHp} label={isAI ? aiName.toUpperCase() : 'OPPONENT'} flip />
         </div>
       </div>
