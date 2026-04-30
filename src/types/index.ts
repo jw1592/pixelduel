@@ -6,6 +6,7 @@ export interface Profile {
   wins: number
   losses: number
   draws: number
+  pvp_wins: number
   created_at: string
 }
 
