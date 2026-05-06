@@ -40,13 +40,12 @@ function lerpLandmarks(from: PoseLandmark[], to: PoseLandmark[], t: number): Pos
 
 interface Props {
   enabled: boolean
-  active: boolean
   profile: Profile | null
   canvasRef: RefObject<HTMLCanvasElement | null>
   onAIAttack: () => void
 }
 
-export function useAIOpponent({ enabled, active, profile, canvasRef, onAIAttack }: Props) {
+export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props) {
   const [aiHp, setAiHp] = useState(MAX_HP)
   const aiHpRef = useRef(MAX_HP)
   const aiNameRef = useRef<string | null>(null)
@@ -103,7 +102,7 @@ export function useAIOpponent({ enabled, active, profile, canvasRef, onAIAttack 
   }, [enabled, canvasRef])
 
   useEffect(() => {
-    if (!enabled || !active) return
+    if (!enabled) return
     const wins = profile?.wins ?? 0
     const losses = profile?.losses ?? 0
     const { minInterval, maxInterval, blockChance } = getDifficulty(wins, losses)
@@ -124,7 +123,7 @@ export function useAIOpponent({ enabled, active, profile, canvasRef, onAIAttack 
     scheduleNext()
 
     return () => clearTimeout(timerId)
-  }, [enabled, active, profile, transitionPose])
+  }, [enabled, profile, transitionPose])
 
   const receiveAttack = useCallback((): 'hit' | 'blocked' => {
     const blocking = Math.random() < blockChanceRef.current

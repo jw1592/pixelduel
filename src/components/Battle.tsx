@@ -54,8 +54,7 @@ export function Battle({ user }: Props) {
   const { profile } = useProfile(user)
   const [myHp, setMyHp] = useState(MAX_HP)
   const [opponentHp, setOpponentHp] = useState(MAX_HP)
-  const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'countdown' : 'connecting')
-  const [countdown, setCountdown] = useState(10)
+  const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
   const [myFlash, setMyFlash] = useState(false)
   const [opponentFlash, setOpponentFlash] = useState(false)
   const [combatFeedback, setCombatFeedback] = useState<{ text: string; color: string; id: number } | null>(null)
@@ -88,7 +87,6 @@ export function Battle({ user }: Props) {
   const aiCanvasRef = useRef<HTMLCanvasElement>(null)
   const { aiHp, aiName, receiveAttack } = useAIOpponent({
     enabled: isAI,
-    active: battleStatus === 'active',
     profile,
     canvasRef: aiCanvasRef,
     onAIAttack: () => {
@@ -202,21 +200,6 @@ export function Battle({ user }: Props) {
     }
     return () => { if (!isAI) stopHum() }
   }, [connected, isAI, startHum, stopHum])
-
-  useEffect(() => {
-    if (!isAI || battleStatus !== 'countdown') return
-    const id = setInterval(() => {
-      setCountdown(c => {
-        if (c <= 1) {
-          clearInterval(id)
-          setBattleStatus('active')
-          return 0
-        }
-        return c - 1
-      })
-    }, 1000)
-    return () => clearInterval(id)
-  }, [isAI, battleStatus])
 
   useEffect(() => {
     if (!isAI) return
@@ -463,15 +446,6 @@ export function Battle({ user }: Props) {
         >
           {combatFeedback.text}
         </span>
-      )}
-
-      {/* Countdown overlay */}
-      {battleStatus === 'countdown' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-black/70 z-40">
-          <p className="text-gray-400 text-xs tracking-widest">VS {aiName.toUpperCase()}</p>
-          <p className="text-white font-bold" style={{ fontSize: '6rem', lineHeight: 1 }}>{countdown}</p>
-          <p className="text-gray-500 text-xs">Get ready...</p>
-        </div>
       )}
 
       {/* Pose loading */}
