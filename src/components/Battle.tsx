@@ -392,6 +392,7 @@ export function Battle({ user }: Props) {
             playsInline
             muted
             className="absolute inset-0 w-full h-full object-cover"
+            style={{ transform: 'scaleX(-1)' }}
           />
           {battleStatus === 'connecting' && (
             <div className="absolute inset-0 flex items-center justify-center">
