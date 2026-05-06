@@ -17,7 +17,6 @@ export function useLeaderboard(limit = 10) {
     supabase
       .from('profiles')
       .select('id, display_name, avatar_url, country_code, pvp_wins')
-      .gt('pvp_wins', 0)
       .order('pvp_wins', { ascending: false })
       .limit(limit)
       .then(({ data, error }) => {
