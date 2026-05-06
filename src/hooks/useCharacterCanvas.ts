@@ -63,10 +63,10 @@ function drawShield(ctx: CanvasRenderingContext2D, center: Point, size: number, 
 
 // First-person coordinate mapping
 // Camera y [0,1] top→bottom, x mirrored for natural self-view
-const FP_ZOOM = 2.2
+const FP_ZOOM = 1.3
 const FP_CX = 0.5
 const FP_CY = 0.5
-const FP_Y_OFFSET = 0.72
+const FP_Y_OFFSET = 0.66
 
 function fpPt(lm: PoseLandmark, w: number, h: number): Point {
   return {
@@ -101,7 +101,7 @@ function drawFirstPersonArms(
   drawSegment(ctx, rElbow, rWrist, limbThick, SKIN)
 
   // Shield on left wrist
-  drawShield(ctx, lWrist, limbThick * 2.0, blocking)
+  drawShield(ctx, lWrist, limbThick * 2.8, blocking)
 
   // Lightsaber on right hand
   const faDx = rWrist.x - rElbow.x
@@ -137,7 +137,8 @@ export function drawCharacter(
   avatarImg: HTMLImageElement | null,
   w: number,
   h: number,
-  colors?: { skin?: string; shirt?: string; pants?: string }
+  colors?: { skin?: string; shirt?: string; pants?: string },
+  isBlocking?: boolean
 ) {
   if (landmarks.length < 29) return
 
@@ -201,6 +202,10 @@ export function drawCharacter(
     const emitB: Point = { x: rWrist.x + nx * 5, y: rWrist.y + ny * 5 }
     drawSegment(ctx, emitA, emitB, 16, '#334466')
   }
+
+  // Shield on left wrist
+  const shieldSize = Math.max(12, limbThick * 1.8)
+  drawShield(ctx, lWrist, shieldSize, !!isBlocking)
 
   // Head
   const nose = lm2px(landmarks[0], w, h)

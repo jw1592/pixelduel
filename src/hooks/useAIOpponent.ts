@@ -57,6 +57,7 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
   const poseToRef = useRef<PoseLandmark[]>(IDLE_POSE)
   const poseStartRef = useRef<number>(0)
   const blockChanceRef = useRef(0.15)
+  const aiBlockingRef = useRef(false)
   const onAIAttackRef = useRef(onAIAttack)
   const mountedRef = useRef(true)
 
@@ -83,16 +84,15 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
         if (ctx) {
           const t = Math.min(1, (performance.now() - poseStartRef.current) / LERP_DURATION)
           const lms = lerpLandmarks(poseFromRef.current, poseToRef.current, t)
-          // Scale up for full-screen 1인칭 view: zoom 1.7x, bias toward upper body
-          const zoom = 1.7
+          const zoom = 1.3
           const cx = 0.5, cy = 0.42
           const scaledLms = lms.map(lm => ({
             ...lm,
             x: (lm.x - cx) * zoom + cx,
-            y: (lm.y - cy) * zoom + cy + 0.06,
+            y: (lm.y - cy) * zoom + cy + 0.04,
           }))
           ctx.clearRect(0, 0, canvas.width, canvas.height)
-          drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors)
+          drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors, aiBlockingRef.current)
         }
       }
       rafId = requestAnimationFrame(render)
@@ -128,8 +128,14 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
   const receiveAttack = useCallback((): 'hit' | 'blocked' => {
     const blocking = Math.random() < blockChanceRef.current
     if (blocking) {
+      aiBlockingRef.current = true
       transitionPose(BLOCK_POSE)
-      setTimeout(() => { if (mountedRef.current) transitionPose(IDLE_POSE) }, 400)
+      setTimeout(() => {
+        if (mountedRef.current) {
+          aiBlockingRef.current = false
+          transitionPose(IDLE_POSE)
+        }
+      }, 400)
       return 'blocked'
     }
     setAiHp(prev => Math.max(0, prev - HIT_DAMAGE))
