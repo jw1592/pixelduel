@@ -34,7 +34,7 @@ export function Lobby({ user, onSignOut, onlineCount }: Props) {
   const displayFlag = profile.country_code ? countryFlag(profile.country_code) : flag
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-4">
+    <div className="flex flex-col items-center justify-center gap-4 px-4 overflow-hidden" style={{ height: '100dvh' }}>
       <h1 className="text-green-400 text-2xl leading-loose text-center">
         PIXEL<br/>DUEL
       </h1>

@@ -64,14 +64,20 @@ export function Battle({ user }: Props) {
     setTimeout(() => setCombatFeedback(null), 900)
   }, [])
 
+  const blockingRef = useRef(false)
+
   const { videoRef, status: webcamStatus, start: startWebcam, stop: stopWebcam } = useWebcam()
   const { status: poseStatus, detectLoop } = usePoseLandmarker(videoRef)
   const { canvasRef, latestLandmarksRef } = useCharacterCanvas({
     videoRef,
     avatarUrl: profile?.avatar_url ?? null,
     detectLoop,
+    firstPerson: true,
+    blockingRef,
   })
   const { gesture, update: updateGestures } = useCombatGestures(latestLandmarksRef)
+
+  useEffect(() => { blockingRef.current = gesture.isBlocking }, [gesture.isBlocking])
 
   const sendMessageRef = useRef<((msg: GameMessage) => void) | null>(null)
   const { startHum, stopHum, playSwing, playHit } = useLightsaberSound()
@@ -367,107 +373,96 @@ export function Battle({ user }: Props) {
   }
 
   return (
-    <div className="overflow-hidden flex flex-col md:flex-row bg-black relative" style={{ height: '100dvh' }}>
+    <div className="overflow-hidden relative bg-black" style={{ height: '100dvh' }}>
       <video ref={videoRef} className="hidden" playsInline muted />
 
+      {/* Opponent: full-screen background */}
+      {isAI ? (
+        <canvas
+          ref={aiCanvasRef}
+          width={640}
+          height={480}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <>
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          {battleStatus === 'connecting' && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-gray-500 text-xs">Connecting...</p>
+            </div>
+          )}
+          {opponentAfk && opponentAfkCountdown !== null && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 z-20">
+              <p className="text-yellow-400 text-xs text-center px-4">Opponent is away</p>
+              <p className="text-white text-2xl">{opponentAfkCountdown}</p>
+              <p className="text-gray-400 text-xs text-center px-4">Victory in {opponentAfkCountdown}s</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Opponent hit flash */}
+      {opponentFlash && (
+        <div className="absolute inset-0 pointer-events-none bg-orange-400/40 z-10" />
+      )}
+
+      {/* AI name */}
+      {isAI && (
+        <div className="absolute top-14 left-0 right-0 flex justify-center z-10">
+          <span className="text-xs text-gray-600">{aiName.toUpperCase()}</span>
+        </div>
+      )}
+
+      {/* HP bars at top */}
+      <div className="absolute top-0 left-0 right-0 flex gap-2 px-2 pt-2 z-10">
+        <HpBar hp={myHp} label="YOU" />
+        <HpBar hp={isAI ? aiHp : opponentHp} label={isAI ? aiName.toUpperCase() : 'OPPONENT'} flip />
+      </div>
+
+      {/* My arms: first-person transparent overlay */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none z-10"
+      />
+
+      {/* My hit flash */}
+      {myFlash && (
+        <div className="absolute inset-0 pointer-events-none bg-red-500/50 z-20" />
+      )}
+
+      {/* Combat feedback text */}
       {combatFeedback && (
         <span
           key={combatFeedback.id}
-          className="combat-feedback"
+          className="combat-feedback z-30"
           style={{ color: combatFeedback.color }}
         >
           {combatFeedback.text}
         </span>
       )}
 
-      {/* Left: Me */}
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 relative bg-gray-950">
-          <canvas
-            ref={canvasRef}
-            className="w-full h-full object-cover"
-          />
-          {poseStatus === 'loading' && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-gray-600 text-xs">Loading pose model...</p>
-            </div>
-          )}
-          {battleStatus === 'active' && myAfkCountdown !== null && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80">
-              <p className="text-red-400 text-xs text-center px-4">You are not detected on screen</p>
-              <p className="text-white text-3xl">{myAfkCountdown}</p>
-              <p className="text-gray-400 text-xs text-center px-4">
-                Defeat in {myAfkCountdown}s
-              </p>
-            </div>
-          )}
-          {myFlash && (
-            <div className="absolute inset-0 pointer-events-none bg-red-500/50 transition-opacity" />
-          )}
-          {battleStatus === 'active' && (
-            <div className="absolute bottom-2 left-2">
-              <span className={`text-xs px-2 py-1 rounded ${gesture.isBlocking ? 'bg-blue-900 text-blue-300' : gesture.isAttacking ? 'bg-red-900 text-red-300' : 'text-gray-700'}`}>
-                {gesture.isAttacking ? 'ATTACK' : gesture.isBlocking ? 'BLOCK' : ''}
-              </span>
-            </div>
-          )}
+      {/* Pose loading */}
+      {poseStatus === 'loading' && (
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+          <p className="text-gray-600 text-xs">Loading pose model...</p>
         </div>
-        <div className="flex-shrink-0 py-2">
-          <HpBar hp={myHp} label="YOU" />
-        </div>
-      </div>
+      )}
 
-      {/* Right: Opponent */}
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 relative bg-gray-900">
-          {isAI ? (
-            <>
-              <canvas
-                ref={aiCanvasRef}
-                width={640}
-                height={480}
-                className="w-full h-full object-cover"
-              />
-              {opponentFlash && (
-                <div className="absolute inset-0 pointer-events-none bg-orange-400/50 transition-opacity" />
-              )}
-              <div className="absolute top-2 left-0 right-0 flex justify-center">
-                <span className="text-xs text-gray-500">{aiName.toUpperCase()}</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-              {opponentFlash && (
-                <div className="absolute inset-0 pointer-events-none bg-orange-400/50 transition-opacity" />
-              )}
-              {battleStatus === 'connecting' && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <p className="text-gray-500 text-xs">Connecting...</p>
-                </div>
-              )}
-              {opponentAfk && opponentAfkCountdown !== null && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70">
-                  <p className="text-yellow-400 text-xs text-center px-4">Opponent is away</p>
-                  <p className="text-white text-2xl">{opponentAfkCountdown}</p>
-                  <p className="text-gray-400 text-xs text-center px-4">
-                    Victory in {opponentAfkCountdown}s
-                  </p>
-                </div>
-              )}
-            </>
-          )}
+      {/* AFK warning */}
+      {battleStatus === 'active' && myAfkCountdown !== null && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 z-30">
+          <p className="text-red-400 text-xs text-center px-4">You are not detected on screen</p>
+          <p className="text-white text-3xl">{myAfkCountdown}</p>
+          <p className="text-gray-400 text-xs text-center px-4">Defeat in {myAfkCountdown}s</p>
         </div>
-        <div className="flex-shrink-0 py-2">
-          <HpBar hp={isAI ? aiHp : opponentHp} label={isAI ? aiName.toUpperCase() : 'OPPONENT'} flip />
-        </div>
-      </div>
+      )}
     </div>
   )
 }

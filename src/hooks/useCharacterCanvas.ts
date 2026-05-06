@@ -20,7 +20,118 @@ function drawSegment(ctx: CanvasRenderingContext2D, a: Point, b: Point, thicknes
   ctx.restore()
 }
 
-function drawCharacter(
+function drawShield(ctx: CanvasRenderingContext2D, center: Point, size: number, blocking: boolean) {
+  ctx.save()
+  if (blocking) {
+    ctx.shadowColor = '#60a5fa'
+    ctx.shadowBlur = 24
+  }
+  // Outer body
+  ctx.beginPath()
+  ctx.arc(center.x, center.y, size, 0, Math.PI * 2)
+  ctx.fillStyle = '#8a7a6a'
+  ctx.fill()
+  // Inner plate
+  ctx.beginPath()
+  ctx.arc(center.x, center.y, size * 0.72, 0, Math.PI * 2)
+  ctx.fillStyle = '#5a4a3a'
+  ctx.fill()
+  // Cross detail
+  ctx.strokeStyle = '#7a6a5a'
+  ctx.lineWidth = size * 0.08
+  ctx.beginPath()
+  ctx.moveTo(center.x, center.y - size * 0.5)
+  ctx.lineTo(center.x, center.y + size * 0.5)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(center.x - size * 0.5, center.y)
+  ctx.lineTo(center.x + size * 0.5, center.y)
+  ctx.stroke()
+  // Rim
+  ctx.beginPath()
+  ctx.arc(center.x, center.y, size, 0, Math.PI * 2)
+  ctx.strokeStyle = blocking ? '#93c5fd' : '#b09a70'
+  ctx.lineWidth = blocking ? 4 : 2.5
+  ctx.stroke()
+  // Boss
+  ctx.beginPath()
+  ctx.arc(center.x, center.y, size * 0.18, 0, Math.PI * 2)
+  ctx.fillStyle = '#c8a860'
+  ctx.fill()
+  ctx.restore()
+}
+
+// First-person coordinate mapping
+// Camera y [0,1] top→bottom, x mirrored for natural self-view
+const FP_ZOOM = 2.2
+const FP_CX = 0.5
+const FP_CY = 0.5
+const FP_Y_OFFSET = 0.72
+
+function fpPt(lm: PoseLandmark, w: number, h: number): Point {
+  return {
+    x: ((1 - lm.x) - FP_CX) * FP_ZOOM * w + w * 0.5,
+    y: (lm.y - FP_CY) * FP_ZOOM * h + h * FP_Y_OFFSET,
+  }
+}
+
+function drawFirstPersonArms(
+  ctx: CanvasRenderingContext2D,
+  landmarks: PoseLandmark[],
+  w: number,
+  h: number,
+  blocking: boolean
+) {
+  if (landmarks.length < 17) return
+
+  const SKIN = '#c8966b'
+  const limbThick = Math.max(18, w * 0.05)
+
+  const lShoulder = fpPt(landmarks[11], w, h)
+  const lElbow    = fpPt(landmarks[13], w, h)
+  const lWrist    = fpPt(landmarks[15], w, h)
+  const rShoulder = fpPt(landmarks[12], w, h)
+  const rElbow    = fpPt(landmarks[14], w, h)
+  const rWrist    = fpPt(landmarks[16], w, h)
+
+  // Draw arms
+  drawSegment(ctx, lShoulder, lElbow, limbThick, SKIN)
+  drawSegment(ctx, lElbow, lWrist, limbThick, SKIN)
+  drawSegment(ctx, rShoulder, rElbow, limbThick, SKIN)
+  drawSegment(ctx, rElbow, rWrist, limbThick, SKIN)
+
+  // Shield on left wrist
+  drawShield(ctx, lWrist, limbThick * 2.0, blocking)
+
+  // Lightsaber on right hand
+  const faDx = rWrist.x - rElbow.x
+  const faDy = rWrist.y - rElbow.y
+  const faLen = Math.hypot(faDx, faDy)
+  if (faLen > 0) {
+    const nx = faDx / faLen
+    const ny = faDy / faLen
+    const bladeLen = faLen * 2.2
+    const bladeTip: Point = { x: rWrist.x + nx * bladeLen, y: rWrist.y + ny * bladeLen }
+
+    ctx.save()
+    ctx.globalAlpha = 0.10; drawSegment(ctx, rWrist, bladeTip, 36, '#2255cc')
+    ctx.globalAlpha = 0.22; drawSegment(ctx, rWrist, bladeTip, 24, '#3366ee')
+    ctx.globalAlpha = 0.45; drawSegment(ctx, rWrist, bladeTip, 14, '#5588ff')
+    ctx.globalAlpha = 0.75; drawSegment(ctx, rWrist, bladeTip, 7,  '#99bbff')
+    ctx.globalAlpha = 1.00; drawSegment(ctx, rWrist, bladeTip, 3,  '#ffffff')
+    ctx.restore()
+
+    const hiltLen = faLen * 0.45
+    const hiltStart: Point = { x: rWrist.x - nx * hiltLen, y: rWrist.y - ny * hiltLen }
+    drawSegment(ctx, hiltStart, rWrist, 14, '#1a1a2e')
+    drawSegment(ctx, hiltStart, rWrist, 10, '#2a2a4a')
+    const emitA: Point = { x: rWrist.x - nx * 5, y: rWrist.y - ny * 5 }
+    const emitB: Point = { x: rWrist.x + nx * 5, y: rWrist.y + ny * 5 }
+    drawSegment(ctx, emitA, emitB, 16, '#334466')
+  }
+}
+
+export function drawCharacter(
   ctx: CanvasRenderingContext2D,
   landmarks: PoseLandmark[],
   avatarImg: HTMLImageElement | null,
@@ -54,14 +165,11 @@ function drawCharacter(
   const sMid: Point = { x: (lShoulder.x + rShoulder.x) / 2, y: (lShoulder.y + rShoulder.y) / 2 }
   const hMid: Point = { x: (lHip.x + rHip.x) / 2,          y: (lHip.y + rHip.y) / 2 }
 
-  // Torso
   drawSegment(ctx, sMid, hMid, torsoThick, SHIRT)
-  // Arms
   drawSegment(ctx, lShoulder, lElbow, limbThick, SKIN)
   drawSegment(ctx, lElbow, lWrist, limbThick, SKIN)
   drawSegment(ctx, rShoulder, rElbow, limbThick, SKIN)
   drawSegment(ctx, rElbow, rWrist, limbThick, SKIN)
-  // Legs
   drawSegment(ctx, lHip, lKnee, limbThick, PANTS)
   drawSegment(ctx, lKnee, lAnkle, limbThick, PANTS)
   drawSegment(ctx, rHip, rKnee, limbThick, PANTS)
@@ -77,7 +185,6 @@ function drawCharacter(
     const bladeLen = forearmLen * 2.5
     const bladeTip: Point = { x: rWrist.x + nx * bladeLen, y: rWrist.y + ny * bladeLen }
 
-    // Blade: layered glow (outer → inner → white core)
     ctx.save()
     ctx.globalAlpha = 0.10; drawSegment(ctx, rWrist, bladeTip, 36, '#2255cc')
     ctx.globalAlpha = 0.22; drawSegment(ctx, rWrist, bladeTip, 24, '#3366ee')
@@ -86,18 +193,16 @@ function drawCharacter(
     ctx.globalAlpha = 1.00; drawSegment(ctx, rWrist, bladeTip, 3, '#ffffff')
     ctx.restore()
 
-    // Hilt (handle behind the wrist)
     const hiltLen = forearmLen * 0.45
     const hiltStart: Point = { x: rWrist.x - nx * hiltLen, y: rWrist.y - ny * hiltLen }
     drawSegment(ctx, hiltStart, rWrist, 14, '#1a1a2e')
     drawSegment(ctx, hiltStart, rWrist, 10, '#2a2a4a')
-    // Emitter collar (bright ring where blade meets hilt)
     const emitA: Point = { x: rWrist.x - nx * 5, y: rWrist.y - ny * 5 }
     const emitB: Point = { x: rWrist.x + nx * 5, y: rWrist.y + ny * 5 }
     drawSegment(ctx, emitA, emitB, 16, '#334466')
   }
 
-  // Head (avatar image or fallback colored block)
+  // Head
   const nose = lm2px(landmarks[0], w, h)
   const headSize = Math.max(40, shoulderWidth * 0.9)
   if (avatarImg && avatarImg.complete && avatarImg.naturalWidth > 0) {
@@ -115,18 +220,17 @@ interface Props {
   videoRef: React.RefObject<HTMLVideoElement | null>
   avatarUrl: string | null
   detectLoop: (onFrame: (lms: PoseLandmark[]) => void) => () => void
+  firstPerson?: boolean
+  blockingRef?: React.RefObject<boolean>
 }
 
-export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop }: Props) {
+export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop, firstPerson, blockingRef }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const latestLandmarksRef = useRef<PoseLandmark[]>([])
   const avatarImgRef = useRef<HTMLImageElement | null>(null)
 
   useEffect(() => {
-    if (!avatarUrl) {
-      avatarImgRef.current = null
-      return
-    }
+    if (!avatarUrl) { avatarImgRef.current = null; return }
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.src = avatarUrl
@@ -140,13 +244,27 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop }: Props) {
     const video = videoRef.current
     if (!canvas || !video) return
 
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    if (firstPerson) {
+      // Match canvas to display dimensions for crisp first-person rendering
+      const dw = canvas.clientWidth || 640
+      const dh = canvas.clientHeight || 480
+      if (canvas.width !== dw || canvas.height !== dh) {
+        canvas.width = dw
+        canvas.height = dh
+      }
+      ctx.clearRect(0, 0, dw, dh)
+      drawFirstPersonArms(ctx, landmarks, dw, dh, blockingRef?.current ?? false)
+      return
+    }
+
+    // Third-person mode (original)
     const w = video.videoWidth || 640
     const h = video.videoHeight || 480
     if (canvas.width !== w) canvas.width = w
     if (canvas.height !== h) canvas.height = h
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
 
     const S = DISPLAY_SCALE
     const scaledW = w * S
@@ -156,14 +274,11 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop }: Props) {
 
     ctx.fillStyle = '#000'
     ctx.fillRect(0, 0, w, h)
-
-    // Mirror the webcam feed, scaled to 75% and centered
     ctx.save()
     ctx.scale(-1, 1)
     ctx.drawImage(video, -(offsetX + scaledW), offsetY, scaledW, scaledH)
     ctx.restore()
 
-    // Landmarks adjusted for scale + centering + mirroring
     const off = (1 - S) / 2
     const adjusted = landmarks.map(lm => ({
       ...lm,
@@ -171,7 +286,7 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop }: Props) {
       y: off + lm.y * S,
     }))
     drawCharacter(ctx, adjusted, avatarImgRef.current, w, h)
-  }, [videoRef])
+  }, [videoRef, firstPerson, blockingRef])
 
   useEffect(() => {
     return detectLoop(onFrame)
@@ -179,5 +294,3 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop }: Props) {
 
   return { canvasRef, latestLandmarksRef }
 }
-
-export { drawCharacter }

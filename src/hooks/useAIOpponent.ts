@@ -83,8 +83,16 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
         if (ctx) {
           const t = Math.min(1, (performance.now() - poseStartRef.current) / LERP_DURATION)
           const lms = lerpLandmarks(poseFromRef.current, poseToRef.current, t)
+          // Scale up for full-screen 1인칭 view: zoom 1.7x, bias toward upper body
+          const zoom = 1.7
+          const cx = 0.5, cy = 0.42
+          const scaledLms = lms.map(lm => ({
+            ...lm,
+            x: (lm.x - cx) * zoom + cx,
+            y: (lm.y - cy) * zoom + cy + 0.06,
+          }))
           ctx.clearRect(0, 0, canvas.width, canvas.height)
-          drawCharacter(ctx, lms, null, canvas.width, canvas.height, colors)
+          drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors)
         }
       }
       rafId = requestAnimationFrame(render)
