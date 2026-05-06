@@ -180,7 +180,7 @@ export function Battle({ user }: Props) {
     matchId: matchId ?? '',
     player1Id: routeState?.player1_id ?? '',
     player2Id: routeState?.player2_id ?? '',
-    canvasRef,
+    videoRef,
     onMessage: handleMessage,
   })
 

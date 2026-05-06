@@ -91,7 +91,8 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
             x: (lm.x - cx) * zoom + cx,
             y: (lm.y - cy) * zoom + cy + 0.04,
           }))
-          ctx.clearRect(0, 0, canvas.width, canvas.height)
+          ctx.fillStyle = '#1a1a1a'
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
           drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors, aiBlockingRef.current)
         }
       }

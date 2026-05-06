@@ -10,11 +10,11 @@ interface Props {
   matchId: string
   player1Id: string
   player2Id: string
-  canvasRef: React.RefObject<HTMLCanvasElement | null>
+  videoRef: React.RefObject<HTMLVideoElement | null>
   onMessage: (msg: GameMessage) => void
 }
 
-export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMessage }: Props) {
+export function useWebRTC({ enabled, user, matchId, player1Id, videoRef, onMessage }: Props) {
   const [connected, setConnected] = useState(false)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const dcRef = useRef<RTCDataChannel | null>(null)
@@ -45,10 +45,10 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
       pc.oniceconnectionstatechange = () => console.log('[webrtc] ICE state:', pc?.iceConnectionState)
       pc.onconnectionstatechange = () => console.log('[webrtc] connection state:', pc?.connectionState)
 
-      const canvas = canvasRef.current
-      console.log('[webrtc] canvas:', canvas, '| isPlayer1:', isPlayer1)
-      if (canvas) {
-        const stream = (canvas as HTMLCanvasElement & { captureStream: (fps: number) => MediaStream }).captureStream(30)
+      const video = videoRef.current
+      console.log('[webrtc] videoRef:', video, '| isPlayer1:', isPlayer1)
+      if (video) {
+        const stream = (video as HTMLVideoElement & { captureStream: (fps: number) => MediaStream }).captureStream(30)
         const tracks = stream.getVideoTracks()
         console.log('[webrtc] video tracks to add:', tracks.length)
         tracks.forEach(t => pc!.addTrack(t, stream))
@@ -150,7 +150,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, canvasRef, onMess
       setConnected(false)
       if (signalChannel) supabase.removeChannel(signalChannel)
     }
-  }, [enabled, matchId, isPlayer1, user.id, canvasRef, onMessage])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, matchId, isPlayer1, user.id, videoRef, onMessage])  // eslint-disable-line react-hooks/exhaustive-deps
 
   return { connected, sendMessage, remoteVideoRef }
 }
