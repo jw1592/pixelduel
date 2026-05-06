@@ -18,7 +18,6 @@ const DEFEAT_LOTTIE  = 'https://assets-v2.lottiefiles.com/a/d79b76c8-1188-11ee-8
 
 const MAX_HP = 100
 const HIT_DAMAGE = 10
-const BLOCK_DAMAGE = 3
 
 interface Props {
   user: User
@@ -58,6 +57,12 @@ export function Battle({ user }: Props) {
   const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
   const [myFlash, setMyFlash] = useState(false)
   const [opponentFlash, setOpponentFlash] = useState(false)
+  const [combatFeedback, setCombatFeedback] = useState<{ text: string; color: string; id: number } | null>(null)
+
+  const showFeedback = useCallback((text: string, color: string) => {
+    setCombatFeedback({ text, color, id: Date.now() })
+    setTimeout(() => setCombatFeedback(null), 900)
+  }, [])
 
   const { videoRef, status: webcamStatus, start: startWebcam, stop: stopWebcam } = useWebcam()
   const { status: poseStatus, detectLoop } = usePoseLandmarker(videoRef)
@@ -79,13 +84,16 @@ export function Battle({ user }: Props) {
     profile,
     canvasRef: aiCanvasRef,
     onAIAttack: () => {
-      playHitRef.current()
       const blocking = isBlocking(latestLandmarksRef.current)
-      const damage = blocking ? BLOCK_DAMAGE : HIT_DAMAGE
-      setMyHp(prev => Math.max(0, prev - damage))
-      setMyFlash(true)
-      setTimeout(() => setMyFlash(false), 200)
-      navigator.vibrate?.(80)
+      if (blocking) {
+        showFeedback('GUARD SUCCESS', '#60a5fa')
+      } else {
+        playHitRef.current()
+        setMyHp(prev => Math.max(0, prev - HIT_DAMAGE))
+        setMyFlash(true)
+        setTimeout(() => setMyFlash(false), 200)
+        navigator.vibrate?.(80)
+      }
     },
   })
 
@@ -102,24 +110,31 @@ export function Battle({ user }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleMessage = useCallback((msg: GameMessage) => {
     if (msg.type === 'attack') {
-      playHitRef.current()
-      if (opponentAfkRef.current) return  // pause battle while opponent is AFK
+      if (opponentAfkRef.current) return
       const isBlockingNow = isBlocking(latestLandmarksRef.current)
-      const damage = isBlockingNow ? BLOCK_DAMAGE : HIT_DAMAGE
-      setMyFlash(true)
-      setTimeout(() => setMyFlash(false), 200)
-      navigator.vibrate?.(80)
-      setMyHp(prev => {
-        const next = Math.max(0, prev - damage)
-        if (next > 0) {
-          sendMessageRef.current?.({ type: 'hp', value: next })
-        } else {
-          sendMessageRef.current?.({ type: 'dead' })
-        }
-        return next
-      })
+      if (isBlockingNow) {
+        showFeedback('GUARD SUCCESS', '#60a5fa')
+        sendMessageRef.current?.({ type: 'blocked' })
+      } else {
+        playHitRef.current()
+        setMyFlash(true)
+        setTimeout(() => setMyFlash(false), 200)
+        navigator.vibrate?.(80)
+        setMyHp(prev => {
+          const next = Math.max(0, prev - HIT_DAMAGE)
+          if (next > 0) {
+            sendMessageRef.current?.({ type: 'hp', value: next })
+          } else {
+            sendMessageRef.current?.({ type: 'dead' })
+          }
+          return next
+        })
+      }
     } else if (msg.type === 'hp') {
       setOpponentHp(msg.value)
+      showFeedback('ATTACK SUCCESS', '#f97316')
+    } else if (msg.type === 'blocked') {
+      // opponent blocked — no feedback needed
     } else if (msg.type === 'dead') {
       setBattleStatus('victory')
       if (matchId) {
@@ -228,13 +243,18 @@ export function Battle({ user }: Props) {
   useEffect(() => {
     if (gesture.isAttacking && !prevAttackingRef.current && battleStatus === 'active') {
       if (isAI) {
-        receiveAttack()
+        const result = receiveAttack()
+        if (result === 'hit') {
+          showFeedback('ATTACK SUCCESS', '#f97316')
+          setOpponentFlash(true)
+          setTimeout(() => setOpponentFlash(false), 150)
+        }
       } else {
         sendMessage({ type: 'attack' })
+        setOpponentFlash(true)
+        setTimeout(() => setOpponentFlash(false), 150)
       }
       playSwing()
-      setOpponentFlash(true)
-      setTimeout(() => setOpponentFlash(false), 150)
     }
     prevAttackingRef.current = gesture.isAttacking
   }, [gesture.isAttacking, sendMessage, battleStatus, playSwing, isAI, receiveAttack])
@@ -347,8 +367,18 @@ export function Battle({ user }: Props) {
   }
 
   return (
-    <div className="overflow-hidden flex flex-col md:flex-row bg-black" style={{ height: '100dvh' }}>
+    <div className="overflow-hidden flex flex-col md:flex-row bg-black relative" style={{ height: '100dvh' }}>
       <video ref={videoRef} className="hidden" playsInline muted />
+
+      {combatFeedback && (
+        <span
+          key={combatFeedback.id}
+          className="combat-feedback"
+          style={{ color: combatFeedback.color }}
+        >
+          {combatFeedback.text}
+        </span>
+      )}
 
       {/* Left: Me */}
       <div className="flex-1 flex flex-col">

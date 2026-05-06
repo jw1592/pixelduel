@@ -17,3 +17,24 @@ body {
   font-family: var(--font-pixel), monospace;
   min-height: 100vh;
 }
+
+@keyframes combat-feedback {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+}
+
+.combat-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  white-space: nowrap;
+  font-family: var(--font-pixel), monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+  animation: combat-feedback 0.9s ease forwards;
+  text-shadow: 0 0 12px currentColor;
+  z-index: 50;
+}

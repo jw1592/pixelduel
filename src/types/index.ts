@@ -42,6 +42,7 @@ export type GameMessage =
   | { type: 'pose'; landmarks: PoseLandmark[]; t: number }
   | { type: 'attack' }
   | { type: 'hp'; value: number }
+  | { type: 'blocked' }
   | { type: 'dead' }
   | { type: 'afk_warning' }
   | { type: 'afk_cancel' }

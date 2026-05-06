@@ -7,7 +7,6 @@ import { drawCharacter } from './useCharacterCanvas'
 
 const MAX_HP = 100
 const HIT_DAMAGE = 10
-const BLOCK_DAMAGE = 3
 const LERP_DURATION = 250
 
 const MOB_COLORS: Record<string, { skin: string; shirt: string; pants: string }> = {
@@ -118,14 +117,15 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
     return () => clearTimeout(timerId)
   }, [enabled, profile, transitionPose])
 
-  const receiveAttack = useCallback(() => {
+  const receiveAttack = useCallback((): 'hit' | 'blocked' => {
     const blocking = Math.random() < blockChanceRef.current
-    const damage = blocking ? BLOCK_DAMAGE : HIT_DAMAGE
     if (blocking) {
       transitionPose(BLOCK_POSE)
       setTimeout(() => { if (mountedRef.current) transitionPose(IDLE_POSE) }, 400)
+      return 'blocked'
     }
-    setAiHp(prev => Math.max(0, prev - damage))
+    setAiHp(prev => Math.max(0, prev - HIT_DAMAGE))
+    return 'hit'
   }, [transitionPose])
 
   return { aiHp, aiName: aiNameRef.current!, receiveAttack }
