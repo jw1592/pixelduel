@@ -57,11 +57,11 @@ export function Battle({ user }: Props) {
   const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
   const [myFlash, setMyFlash] = useState(false)
   const [opponentFlash, setOpponentFlash] = useState(false)
-  const [combatFeedback, setCombatFeedback] = useState<{ text: string; color: string; id: number } | null>(null)
+  const [combatFeedback, setCombatFeedback] = useState<{ text: string; color: string; id: number; side: 'left' | 'right' } | null>(null)
 
-  const showFeedback = useCallback((text: string, color: string) => {
-    setCombatFeedback({ text, color, id: Date.now() })
-    setTimeout(() => setCombatFeedback(null), 900)
+  const showFeedback = useCallback((text: string, color: string, side: 'left' | 'right') => {
+    setCombatFeedback({ text, color, id: Date.now(), side })
+    setTimeout(() => setCombatFeedback(null), 500)
   }, [])
 
   const blockingRef = useRef(false)
@@ -92,7 +92,7 @@ export function Battle({ user }: Props) {
     onAIAttack: () => {
       const blocking = isBlocking(latestLandmarksRef.current)
       if (blocking) {
-        showFeedback('GUARD SUCCESS', '#60a5fa')
+        showFeedback('GUARD SUCCESS', '#60a5fa', 'left')
       } else {
         playHitRef.current()
         setMyHp(prev => Math.max(0, prev - HIT_DAMAGE))
@@ -119,7 +119,7 @@ export function Battle({ user }: Props) {
       if (opponentAfkRef.current) return
       const isBlockingNow = isBlocking(latestLandmarksRef.current)
       if (isBlockingNow) {
-        showFeedback('GUARD SUCCESS', '#60a5fa')
+        showFeedback('GUARD SUCCESS', '#60a5fa', 'left')
         sendMessageRef.current?.({ type: 'blocked' })
       } else {
         playHitRef.current()
@@ -138,7 +138,7 @@ export function Battle({ user }: Props) {
       }
     } else if (msg.type === 'hp') {
       setOpponentHp(msg.value)
-      showFeedback('ATTACK SUCCESS', '#f97316')
+      showFeedback('ATTACK SUCCESS', '#f97316', 'right')
     } else if (msg.type === 'blocked') {
       // opponent blocked — no feedback needed
     } else if (msg.type === 'dead') {
@@ -249,7 +249,7 @@ export function Battle({ user }: Props) {
       if (isAI) {
         const result = receiveAttack()
         if (result === 'hit') {
-          showFeedback('ATTACK SUCCESS', '#f97316')
+          showFeedback('ATTACK SUCCESS', '#f97316', 'right')
           setOpponentFlash(true)
           setTimeout(() => setOpponentFlash(false), 150)
         }
@@ -441,7 +441,11 @@ export function Battle({ user }: Props) {
         <span
           key={combatFeedback.id}
           className="combat-feedback z-30"
-          style={{ color: combatFeedback.color }}
+          style={{
+            color: combatFeedback.color,
+            top: '52px',
+            ...(combatFeedback.side === 'left' ? { left: '12px' } : { right: '12px' }),
+          }}
         >
           {combatFeedback.text}
         </span>

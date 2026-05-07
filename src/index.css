@@ -19,22 +19,20 @@ body {
 }
 
 @keyframes combat-feedback {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
-  20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
-  70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  0%   { opacity: 0;   transform: translateY(0px); }
+  15%  { opacity: 1;   transform: translateY(-6px); }
+  60%  { opacity: 1;   transform: translateY(-18px); }
+  100% { opacity: 0;   transform: translateY(-32px); }
 }
 
 .combat-feedback {
   position: absolute;
-  top: 50%;
-  left: 50%;
   white-space: nowrap;
   font-family: var(--font-pixel), monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
   pointer-events: none;
-  animation: combat-feedback 0.9s ease forwards;
-  text-shadow: 0 0 12px currentColor;
+  animation: combat-feedback 0.5s ease-out forwards;
+  text-shadow: 0 0 10px currentColor;
   z-index: 50;
 }
