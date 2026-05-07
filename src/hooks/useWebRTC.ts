@@ -60,7 +60,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, 
               }
             }, 3000)
           }
-        } else if (state === 'connected' || state === 'closed') {
+        } else if (state === 'connected') {
           if (disconnectTimer) {
             clearTimeout(disconnectTimer)
             disconnectTimer = null

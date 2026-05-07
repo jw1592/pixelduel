@@ -65,7 +65,7 @@ export function Battle({ user }: Props) {
   }, [])
 
   const blockingRef = useRef(false)
-  const battleStatusRef = useRef<BattleStatus>(isAI ? 'active' : 'connecting')
+  const battleStatusRef = useRef(battleStatus)
 
   const { videoRef, status: webcamStatus, start: startWebcam, stop: stopWebcam } = useWebcam()
   const { status: poseStatus, detectLoop } = usePoseLandmarker(videoRef)
