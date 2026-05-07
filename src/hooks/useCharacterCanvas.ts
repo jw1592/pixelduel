@@ -20,24 +20,24 @@ function drawSegment(ctx: CanvasRenderingContext2D, a: Point, b: Point, thicknes
   ctx.restore()
 }
 
-function drawShield(ctx: CanvasRenderingContext2D, center: Point, size: number, blocking: boolean) {
+function drawShield(ctx: CanvasRenderingContext2D, center: Point, size: number, blocking: boolean, isEnemy?: boolean) {
   ctx.save()
   if (blocking) {
-    ctx.shadowColor = '#60a5fa'
+    ctx.shadowColor = isEnemy ? '#ff4422' : '#60a5fa'
     ctx.shadowBlur = 24
   }
   // Outer body
   ctx.beginPath()
   ctx.arc(center.x, center.y, size, 0, Math.PI * 2)
-  ctx.fillStyle = '#8a7a6a'
+  ctx.fillStyle = isEnemy ? '#2a1a1a' : '#8a7a6a'
   ctx.fill()
   // Inner plate
   ctx.beginPath()
   ctx.arc(center.x, center.y, size * 0.72, 0, Math.PI * 2)
-  ctx.fillStyle = '#5a4a3a'
+  ctx.fillStyle = isEnemy ? '#1a0808' : '#5a4a3a'
   ctx.fill()
   // Cross detail
-  ctx.strokeStyle = '#7a6a5a'
+  ctx.strokeStyle = isEnemy ? '#5a2a2a' : '#7a6a5a'
   ctx.lineWidth = size * 0.08
   ctx.beginPath()
   ctx.moveTo(center.x, center.y - size * 0.5)
@@ -50,13 +50,13 @@ function drawShield(ctx: CanvasRenderingContext2D, center: Point, size: number, 
   // Rim
   ctx.beginPath()
   ctx.arc(center.x, center.y, size, 0, Math.PI * 2)
-  ctx.strokeStyle = blocking ? '#93c5fd' : '#b09a70'
+  ctx.strokeStyle = blocking ? (isEnemy ? '#ff6644' : '#93c5fd') : (isEnemy ? '#8b3a2a' : '#b09a70')
   ctx.lineWidth = blocking ? 4 : 2.5
   ctx.stroke()
   // Boss
   ctx.beginPath()
   ctx.arc(center.x, center.y, size * 0.18, 0, Math.PI * 2)
-  ctx.fillStyle = '#c8a860'
+  ctx.fillStyle = isEnemy ? '#cc3322' : '#c8a860'
   ctx.fill()
   ctx.restore()
 }
@@ -139,7 +139,8 @@ export function drawCharacter(
   h: number,
   colors?: { skin?: string; shirt?: string; pants?: string },
   isBlocking?: boolean,
-  upperBodyOnly?: boolean
+  upperBodyOnly?: boolean,
+  isEnemy?: boolean
 ) {
   if (landmarks.length < 29) return
 
@@ -189,11 +190,14 @@ export function drawCharacter(
     const bladeLen = forearmLen * 2.5
     const bladeTip: Point = { x: rWrist.x + nx * bladeLen, y: rWrist.y + ny * bladeLen }
 
+    const [c1, c2, c3, c4] = isEnemy
+      ? ['#cc2200', '#ee3311', '#ff5533', '#ffaa88']
+      : ['#2255cc', '#3366ee', '#5588ff', '#99bbff']
     ctx.save()
-    ctx.globalAlpha = 0.10; drawSegment(ctx, rWrist, bladeTip, 36, '#2255cc')
-    ctx.globalAlpha = 0.22; drawSegment(ctx, rWrist, bladeTip, 24, '#3366ee')
-    ctx.globalAlpha = 0.45; drawSegment(ctx, rWrist, bladeTip, 14, '#5588ff')
-    ctx.globalAlpha = 0.75; drawSegment(ctx, rWrist, bladeTip, 7, '#99bbff')
+    ctx.globalAlpha = 0.10; drawSegment(ctx, rWrist, bladeTip, 36, c1)
+    ctx.globalAlpha = 0.22; drawSegment(ctx, rWrist, bladeTip, 24, c2)
+    ctx.globalAlpha = 0.45; drawSegment(ctx, rWrist, bladeTip, 14, c3)
+    ctx.globalAlpha = 0.75; drawSegment(ctx, rWrist, bladeTip, 7, c4)
     ctx.globalAlpha = 1.00; drawSegment(ctx, rWrist, bladeTip, 3, '#ffffff')
     ctx.restore()
 
@@ -203,12 +207,12 @@ export function drawCharacter(
     drawSegment(ctx, hiltStart, rWrist, 10, '#2a2a4a')
     const emitA: Point = { x: rWrist.x - nx * 5, y: rWrist.y - ny * 5 }
     const emitB: Point = { x: rWrist.x + nx * 5, y: rWrist.y + ny * 5 }
-    drawSegment(ctx, emitA, emitB, 16, '#334466')
+    drawSegment(ctx, emitA, emitB, 16, isEnemy ? '#441111' : '#334466')
   }
 
   // Shield on left wrist
   const shieldSize = Math.max(20, limbThick * 2.8)
-  drawShield(ctx, lWrist, shieldSize, !!isBlocking)
+  drawShield(ctx, lWrist, shieldSize, !!isBlocking, isEnemy)
 
   // Head
   const nose = lm2px(landmarks[0], w, h)

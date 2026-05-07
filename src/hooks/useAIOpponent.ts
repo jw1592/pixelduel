@@ -98,7 +98,7 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
             y: lm.y * zoom + 0.06,
           }))
           drawBackground(ctx, bgRef.current, canvas.width, canvas.height)
-          drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors, aiBlockingRef.current, true)
+          drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors, aiBlockingRef.current, true, true)
         }
       }
       rafId = requestAnimationFrame(render)
