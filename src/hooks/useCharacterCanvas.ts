@@ -1,5 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react'
 import type { PoseLandmark } from '../types'
+import { BATTLE_BACKGROUNDS, drawBackground } from '../data/battleBackgrounds'
+import type { BattleBackground } from '../data/battleBackgrounds'
 
 type Point = { x: number; y: number }
 
@@ -59,6 +61,61 @@ function drawShield(ctx: CanvasRenderingContext2D, center: Point, size: number, 
   ctx.fillStyle = isEnemy ? '#cc3322' : '#c8a860'
   ctx.fill()
   ctx.restore()
+}
+
+function drawFaceInHead(
+  ctx: CanvasRenderingContext2D,
+  video: HTMLVideoElement,
+  origLms: PoseLandmark[],
+  scaledLms: PoseLandmark[],
+  w: number,
+  h: number,
+) {
+  if (origLms.length < 13 || video.readyState < 2) return
+
+  const vw = video.videoWidth || 640
+  const vh = video.videoHeight || 480
+
+  const nose = scaledLms[0]
+  const lS = scaledLms[11]
+  const rS = scaledLms[12]
+  const shoulderW = Math.abs(rS.x - lS.x) * w
+  const headR = Math.max(22, shoulderW * 0.45)
+  const headCx = nose.x * w
+  const headCy = (nose.y - 0.02) * h
+
+  const origNose = origLms[0]
+  const origLEar = origLms[7]
+  const origREar = origLms[8]
+  const earDist = Math.abs(origLEar.x - origREar.x) * vw
+  const faceSize = Math.max(80, earDist * 2.8)
+  const sx = Math.max(0, origNose.x * vw - faceSize / 2)
+  const sy = Math.max(0, (origNose.y - 0.03) * vh - faceSize * 0.55)
+  const sw = Math.min(faceSize, vw - sx)
+  const sh = Math.min(faceSize * 1.1, vh - sy)
+  if (sw <= 0 || sh <= 0) return
+
+  ctx.save()
+  // Dark background fills square corners before clip
+  ctx.beginPath()
+  ctx.arc(headCx, headCy, headR + 3, 0, Math.PI * 2)
+  ctx.fillStyle = '#111'
+  ctx.fill()
+  // Clip to circle
+  ctx.beginPath()
+  ctx.arc(headCx, headCy, headR, 0, Math.PI * 2)
+  ctx.clip()
+  // Flip face horizontally to match mirrored avatar orientation
+  ctx.translate(headCx, headCy)
+  ctx.scale(-1, 1)
+  ctx.drawImage(video, sx, sy, sw, sh, -headR, -headR, headR * 2, headR * 2)
+  ctx.restore()
+  // Border ring
+  ctx.beginPath()
+  ctx.arc(headCx, headCy, headR, 0, Math.PI * 2)
+  ctx.strokeStyle = 'rgba(200,170,120,0.7)'
+  ctx.lineWidth = 2.5
+  ctx.stroke()
 }
 
 // First-person coordinate mapping
@@ -238,8 +295,12 @@ interface Props {
 
 export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop, firstPerson, blockingRef }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const avatarCanvasRef = useRef<HTMLCanvasElement>(null)
   const latestLandmarksRef = useRef<PoseLandmark[]>([])
   const avatarImgRef = useRef<HTMLImageElement | null>(null)
+  const bgRef = useRef<BattleBackground>(
+    BATTLE_BACKGROUNDS[Math.floor(Math.random() * BATTLE_BACKGROUNDS.length)]
+  )
 
   useEffect(() => {
     if (!avatarUrl) { avatarImgRef.current = null; return }
@@ -269,6 +330,27 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop, firstPerso
       }
       ctx.clearRect(0, 0, dw, dh)
       drawFirstPersonArms(ctx, landmarks, dw, dh, blockingRef?.current ?? false)
+
+      // Avatar canvas — composited stream for WebRTC transmission
+      const avatarCanvas = avatarCanvasRef.current
+      if (avatarCanvas && landmarks.length >= 29) {
+        const actx = avatarCanvas.getContext('2d')
+        if (actx) {
+          const aw = 640, ah = 480
+          if (avatarCanvas.width !== aw) avatarCanvas.width = aw
+          if (avatarCanvas.height !== ah) avatarCanvas.height = ah
+          // Mirror x + slight zoom for good upper-body framing
+          const zoom = 1.1, cx = 0.5
+          const scaled = landmarks.map(lm => ({
+            ...lm,
+            x: ((1 - lm.x) - cx) * zoom + cx,
+            y: lm.y * zoom + 0.05,
+          }))
+          drawBackground(actx, bgRef.current, aw, ah)
+          drawCharacter(actx, scaled, null, aw, ah, undefined, blockingRef?.current ?? false, true, false)
+          drawFaceInHead(actx, video, landmarks, scaled, aw, ah)
+        }
+      }
       return
     }
 
@@ -304,5 +386,5 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop, firstPerso
     return detectLoop(onFrame)
   }, [detectLoop, onFrame])
 
-  return { canvasRef, latestLandmarksRef }
+  return { canvasRef, avatarCanvasRef, latestLandmarksRef }
 }

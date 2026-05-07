@@ -68,7 +68,7 @@ export function Battle({ user }: Props) {
 
   const { videoRef, status: webcamStatus, start: startWebcam, stop: stopWebcam } = useWebcam()
   const { status: poseStatus, detectLoop } = usePoseLandmarker(videoRef)
-  const { canvasRef, latestLandmarksRef } = useCharacterCanvas({
+  const { canvasRef, avatarCanvasRef, latestLandmarksRef } = useCharacterCanvas({
     videoRef,
     avatarUrl: profile?.avatar_url ?? null,
     detectLoop,
@@ -180,7 +180,7 @@ export function Battle({ user }: Props) {
     matchId: matchId ?? '',
     player1Id: routeState?.player1_id ?? '',
     player2Id: routeState?.player2_id ?? '',
-    videoRef,
+    avatarCanvasRef,
     onMessage: handleMessage,
   })
 
@@ -373,6 +373,7 @@ export function Battle({ user }: Props) {
   return (
     <div className="overflow-hidden relative bg-black" style={{ height: '100dvh' }}>
       <video ref={videoRef} className="hidden" playsInline muted />
+      <canvas ref={avatarCanvasRef} className="hidden" width={640} height={480} />
 
       {/* Opponent: full-screen background */}
       {isAI ? (

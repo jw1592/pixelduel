@@ -10,11 +10,11 @@ interface Props {
   matchId: string
   player1Id: string
   player2Id: string
-  videoRef: React.RefObject<HTMLVideoElement | null>
+  avatarCanvasRef: React.RefObject<HTMLCanvasElement | null>
   onMessage: (msg: GameMessage) => void
 }
 
-export function useWebRTC({ enabled, user, matchId, player1Id, videoRef, onMessage }: Props) {
+export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, onMessage }: Props) {
   const [connected, setConnected] = useState(false)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const dcRef = useRef<RTCDataChannel | null>(null)
@@ -45,17 +45,18 @@ export function useWebRTC({ enabled, user, matchId, player1Id, videoRef, onMessa
       pc.oniceconnectionstatechange = () => console.log('[webrtc] ICE state:', pc?.iceConnectionState)
       pc.onconnectionstatechange = () => console.log('[webrtc] connection state:', pc?.connectionState)
 
-      // Add webcam track to peer connection — called just before offer/answer so webcam is ready
+      // Add avatar canvas stream track to peer connection
       const addVideoTrack = () => {
-        const video = videoRef.current
-        if (!video?.srcObject) return
-        const stream = video.srcObject as MediaStream
+        const canvas = avatarCanvasRef.current
+        if (!canvas) { console.warn('[webrtc] avatarCanvasRef not ready'); return }
+        type CapturableCanvas = HTMLCanvasElement & { captureStream(fps: number): MediaStream }
+        const stream = (canvas as CapturableCanvas).captureStream(30)
         const tracks = stream.getVideoTracks()
         const senders = pc!.getSenders()
         tracks.forEach(t => {
           if (!senders.find(s => s.track === t)) pc!.addTrack(t, stream)
         })
-        console.log('[webrtc] video tracks added:', tracks.length)
+        console.log('[webrtc] avatar canvas tracks added:', tracks.length)
       }
 
       pc.ontrack = (e) => {
@@ -156,7 +157,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, videoRef, onMessa
       setConnected(false)
       if (signalChannel) supabase.removeChannel(signalChannel)
     }
-  }, [enabled, matchId, isPlayer1, user.id, videoRef, onMessage])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, matchId, isPlayer1, user.id, avatarCanvasRef, onMessage])  // eslint-disable-line react-hooks/exhaustive-deps
 
   return { connected, sendMessage, remoteVideoRef }
 }
