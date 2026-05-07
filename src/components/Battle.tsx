@@ -65,6 +65,7 @@ export function Battle({ user }: Props) {
   }, [])
 
   const blockingRef = useRef(false)
+  const battleStatusRef = useRef<BattleStatus>(isAI ? 'active' : 'connecting')
 
   const { videoRef, status: webcamStatus, start: startWebcam, stop: stopWebcam } = useWebcam()
   const { status: poseStatus, detectLoop } = usePoseLandmarker(videoRef)
@@ -78,6 +79,7 @@ export function Battle({ user }: Props) {
   const { gesture, update: updateGestures } = useCombatGestures(latestLandmarksRef)
 
   useEffect(() => { blockingRef.current = gesture.isBlocking }, [gesture.isBlocking])
+  useEffect(() => { battleStatusRef.current = battleStatus }, [battleStatus])
 
   const sendMessageRef = useRef<((msg: GameMessage) => void) | null>(null)
   const { startHum, stopHum, playSwing, playHit } = useLightsaberSound()
@@ -182,6 +184,16 @@ export function Battle({ user }: Props) {
     player2Id: routeState?.player2_id ?? '',
     avatarCanvasRef,
     onMessage: handleMessage,
+    onDisconnect: useCallback(() => {
+      if (battleStatusRef.current !== 'active') return
+      setBattleStatus('victory')
+      if (matchId) {
+        void supabase.from('matches')
+          .update({ status: 'finished', winner_id: user.id })
+          .eq('id', matchId)
+          .then(({ error }) => { if (error) console.error(error) })
+      }
+    }, [matchId, user.id]),
   })
 
   useEffect(() => {
