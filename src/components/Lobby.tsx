@@ -74,7 +74,7 @@ export function Lobby({ user, onSignOut, onlineCount }: Props) {
                   <span className={`text-xs truncate max-w-16 ${isFirst ? 'text-yellow-400' : 'text-gray-500'}`}>
                     {countryFlag(entry.country_code)}{entry.display_name.split(' ')[0]}
                   </span>
-                  <span className={`text-xs ${isFirst ? 'text-yellow-500' : 'text-gray-600'}`}>{entry.pvp_wins}W</span>
+                  <span className={`text-xs ${isFirst ? 'text-yellow-500' : 'text-gray-600'}`}>{entry.wins}W</span>
                 </div>
               )
             })}
@@ -112,10 +112,6 @@ export function Lobby({ user, onSignOut, onlineCount }: Props) {
           <div>
             <p className="text-gray-500">DRAW</p>
             <p className="text-white mt-1">{profile.draws}</p>
-          </div>
-          <div>
-            <p className="text-yellow-500">PVP</p>
-            <p className="text-white mt-1">{profile.pvp_wins}</p>
           </div>
         </div>
 

@@ -6,7 +6,7 @@ export interface LeaderboardEntry {
   display_name: string
   avatar_url: string | null
   country_code: string | null
-  pvp_wins: number
+  wins: number
 }
 
 export function useLeaderboard(limit = 10) {
@@ -16,8 +16,7 @@ export function useLeaderboard(limit = 10) {
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('id, display_name, avatar_url, country_code, pvp_wins')
-      .order('pvp_wins', { ascending: false })
+      .select('id, display_name, avatar_url, country_code, wins')
       .order('wins', { ascending: false })
       .limit(limit)
       .then(({ data, error }) => {

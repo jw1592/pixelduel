@@ -50,7 +50,7 @@ export function Leaderboard() {
                   {entry.display_name}
                 </span>
                 <span className={`text-xs ${i === 0 ? 'text-yellow-400' : 'text-gray-400'}`}>
-                  {entry.pvp_wins}W
+                  {entry.wins}W
                 </span>
               </div>
             )
