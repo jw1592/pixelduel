@@ -90,12 +90,12 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
         if (ctx) {
           const t = Math.min(1, (performance.now() - poseStartRef.current) / LERP_DURATION)
           const lms = lerpLandmarks(poseFromRef.current, poseToRef.current, t)
-          const zoom = 1.3
-          const cx = 0.5, cy = 0.42
+          const zoom = 1.1
+          const cx = 0.5
           const scaledLms = lms.map(lm => ({
             ...lm,
             x: (lm.x - cx) * zoom + cx,
-            y: (lm.y - cy) * zoom + cy + 0.04,
+            y: lm.y * zoom + 0.06,
           }))
           drawBackground(ctx, bgRef.current, canvas.width, canvas.height)
           drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors, aiBlockingRef.current)
