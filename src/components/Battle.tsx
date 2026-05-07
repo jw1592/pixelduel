@@ -176,6 +176,17 @@ export function Battle({ user }: Props) {
     }
   }, [user.id, matchId, latestLandmarksRef])
 
+  const handleDisconnect = useCallback(() => {
+    if (battleStatusRef.current !== 'active') return
+    setBattleStatus('victory')
+    if (matchId) {
+      void supabase.from('matches')
+        .update({ status: 'finished', winner_id: user.id })
+        .eq('id', matchId)
+        .then(({ error }) => { if (error) console.error(error) })
+    }
+  }, [matchId, user.id])
+
   const { connected, sendMessage, remoteVideoRef } = useWebRTC({
     enabled: !isAI && !!routeState,
     user,
@@ -184,16 +195,7 @@ export function Battle({ user }: Props) {
     player2Id: routeState?.player2_id ?? '',
     avatarCanvasRef,
     onMessage: handleMessage,
-    onDisconnect: useCallback(() => {
-      if (battleStatusRef.current !== 'active') return
-      setBattleStatus('victory')
-      if (matchId) {
-        void supabase.from('matches')
-          .update({ status: 'finished', winner_id: user.id })
-          .eq('id', matchId)
-          .then(({ error }) => { if (error) console.error(error) })
-      }
-    }, [matchId, user.id]),
+    onDisconnect: handleDisconnect,
   })
 
   useEffect(() => {
