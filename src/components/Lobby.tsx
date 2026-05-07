@@ -35,11 +35,11 @@ export function Lobby({ user, onSignOut, onlineCount }: Props) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 px-4 overflow-hidden" style={{ height: '100dvh' }}>
-      <h1 className="text-green-400 text-2xl leading-loose text-center">
+      <h1 className="text-green-400 text-4xl leading-loose text-center">
         PIXEL<br/>DUEL
       </h1>
 
-      <div className="text-yellow-400 text-xs">
+      <div className="text-yellow-400 text-sm">
         ⚔ {onlineCount} online now
       </div>
 
