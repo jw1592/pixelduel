@@ -81,7 +81,7 @@ function drawNature(ctx: CanvasRenderingContext2D, w: number, h: number) {
 
   // Far mountains
   ctx.fillStyle = '#5a8a4a'
-  ;[[0, 0.5, 0.35, 0.3], [0.25, 0.44, 0.3, 0.32], [0.55, 0.48, 0.28, 0.28], [0.78, 0.42, 0.22, 0.3]].forEach(([mx, my, mw, mh]) => {
+  ;[[0, 0.5, 0.35, 0.3], [0.25, 0.44, 0.3, 0.32], [0.55, 0.48, 0.28, 0.28], [0.78, 0.42, 0.22, 0.3]].forEach(([mx, my, mw, _mh]) => {
     ctx.beginPath()
     ctx.moveTo(mx * w, h)
     ctx.lineTo((mx + (mw as number) / 2) * w, my * h)
