@@ -7,7 +7,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useWebcam } from '../hooks/useWebcam'
 import { usePoseLandmarker } from '../hooks/usePoseLandmarker'
 import { useCharacterCanvas } from '../hooks/useCharacterCanvas'
-import { useCombatGestures, isBlocking } from '../hooks/useCombatGestures'
+import { useCombatGestures, getBlockZone } from '../hooks/useCombatGestures'
 import { useWebRTC } from '../hooks/useWebRTC'
 import { useAIOpponent } from '../hooks/useAIOpponent'
 import { useLightsaberSound } from '../hooks/useLightsaberSound'
@@ -89,9 +89,9 @@ export function Battle({ user }: Props) {
     enabled: isAI,
     profile,
     canvasRef: aiCanvasRef,
-    onAIAttack: () => {
-      const blocking = isBlocking(latestLandmarksRef.current)
-      if (blocking) {
+    onAIAttack: (zone) => {
+      const playerBlock = getBlockZone(latestLandmarksRef.current)
+      if (playerBlock === zone) {
         showFeedback('GUARD SUCCESS', '#60a5fa', 'left')
       } else {
         playHitRef.current()
@@ -117,8 +117,8 @@ export function Battle({ user }: Props) {
   const handleMessage = useCallback((msg: GameMessage) => {
     if (msg.type === 'attack') {
       if (opponentAfkRef.current) return
-      const isBlockingNow = isBlocking(latestLandmarksRef.current)
-      if (isBlockingNow) {
+      const playerBlock = getBlockZone(latestLandmarksRef.current)
+      if (playerBlock === msg.zone) {
         showFeedback('GUARD SUCCESS', '#60a5fa', 'left')
         sendMessageRef.current?.({ type: 'blocked' })
       } else {
@@ -254,7 +254,7 @@ export function Battle({ user }: Props) {
           setTimeout(() => setOpponentFlash(false), 150)
         }
       } else {
-        sendMessage({ type: 'attack' })
+        sendMessage({ type: 'attack', zone: gesture.attackZone! })
         setOpponentFlash(true)
         setTimeout(() => setOpponentFlash(false), 150)
       }

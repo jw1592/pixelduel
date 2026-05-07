@@ -1,16 +1,32 @@
 import { useRef, useState, useCallback } from 'react'
-import type { PoseLandmark, GestureState } from '../types'
+import type { PoseLandmark, GestureState, AttackZone } from '../types'
 
 const SWING_SPEED_THRESHOLD = 0.05
 const SWING_HISTORY_WINDOW = 5
 const ARM_EXTENSION_THRESHOLD = 0.18
-const BLOCK_Y_MARGIN = 0.03
 const ATTACK_COOLDOWN_MS = 600
 const HISTORY_SIZE = 8
 
+// Shield (left wrist) covers head if above left shoulder, body if near chest
+export function getBlockZone(landmarks: PoseLandmark[]): AttackZone | null {
+  if (landmarks.length < 29) return null
+  const lWrist = landmarks[15]
+  const lShoulder = landmarks[11]
+  if (lWrist.y < lShoulder.y) return 'head'
+  if (lWrist.y < lShoulder.y + 0.20) return 'body'
+  return null
+}
+
 export function isBlocking(landmarks: PoseLandmark[]): boolean {
-  return landmarks.length >= 29 &&
-    landmarks[15].y < landmarks[11].y - BLOCK_Y_MARGIN
+  return getBlockZone(landmarks) !== null
+}
+
+// Blade tip zone: right wrist Y determines target (head < 0.22, body 0.22–0.52)
+function getAttackZone(landmarks: PoseLandmark[]): AttackZone | null {
+  const rWrist = landmarks[16]
+  if (rWrist.y < 0.22) return 'head'
+  if (rWrist.y < 0.52) return 'body'
+  return null
 }
 
 export function detectGestures(
@@ -18,14 +34,12 @@ export function detectGestures(
   wristYHistory: number[],
   wristXHistory: number[],
 ): GestureState {
-  if (landmarks.length < 29) return { isAttacking: false, isBlocking: false }
+  if (landmarks.length < 29) return { isAttacking: false, isBlocking: false, attackZone: null, blockZone: null }
 
   const rShoulder = landmarks[12]
   const rWrist = landmarks[16]
-  const lShoulder = landmarks[11]
-  const lWrist = landmarks[15]
-
-  const blocking = lWrist.y < lShoulder.y - BLOCK_Y_MARGIN
+  const blockZone = getBlockZone(landmarks)
+  const blocking = blockZone !== null
 
   const armLength = Math.hypot(rWrist.x - rShoulder.x, rWrist.y - rShoulder.y)
   const isExtended = armLength > ARM_EXTENSION_THRESHOLD
@@ -39,14 +53,19 @@ export function detectGestures(
     : 0
   const speed = Math.hypot(velX, velY)
 
+  const attackZone = !blocking ? getAttackZone(landmarks) : null
+  const isAttacking = speed > SWING_SPEED_THRESHOLD && isExtended && !blocking && attackZone !== null
+
   return {
-    isAttacking: speed > SWING_SPEED_THRESHOLD && isExtended && !blocking,
+    isAttacking,
     isBlocking: blocking,
+    attackZone: isAttacking ? attackZone : null,
+    blockZone,
   }
 }
 
 export function useCombatGestures(latestLandmarksRef: React.RefObject<PoseLandmark[]>) {
-  const [gesture, setGesture] = useState<GestureState>({ isAttacking: false, isBlocking: false })
+  const [gesture, setGesture] = useState<GestureState>({ isAttacking: false, isBlocking: false, attackZone: null, blockZone: null })
   const wristYHistoryRef = useRef<number[]>([])
   const wristXHistoryRef = useRef<number[]>([])
   const cooldownRef = useRef(false)
@@ -64,13 +83,17 @@ export function useCombatGestures(latestLandmarksRef: React.RefObject<PoseLandma
 
     const raw = detectGestures(landmarks, yHistory, xHistory)
 
-    if (raw.isAttacking && !cooldownRef.current) {
+    if (raw.isAttacking && raw.attackZone && !cooldownRef.current) {
       cooldownRef.current = true
       setTimeout(() => { cooldownRef.current = false }, ATTACK_COOLDOWN_MS)
-      setGesture({ isAttacking: true, isBlocking: false })
-      setTimeout(() => setGesture(g => ({ ...g, isAttacking: false })), 200)
+      setGesture({ isAttacking: true, isBlocking: false, attackZone: raw.attackZone, blockZone: null })
+      setTimeout(() => setGesture(g => ({ ...g, isAttacking: false, attackZone: null })), 200)
     } else {
-      setGesture(g => g.isBlocking !== raw.isBlocking ? { ...g, isBlocking: raw.isBlocking } : g)
+      setGesture(g =>
+        g.isBlocking !== raw.isBlocking || g.blockZone !== raw.blockZone
+          ? { ...g, isBlocking: raw.isBlocking, blockZone: raw.blockZone }
+          : g
+      )
     }
   }, [latestLandmarksRef])
 

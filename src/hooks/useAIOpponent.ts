@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import type { RefObject } from 'react'
-import type { Profile, PoseLandmark } from '../types'
+import type { Profile, PoseLandmark, AttackZone } from '../types'
 import { AI_CHARACTERS } from '../data/aiCharacters'
 import { IDLE_POSE, ATTACK_POSE, BLOCK_POSE } from '../data/aiPoses'
 import { BATTLE_BACKGROUNDS, drawBackground } from '../data/battleBackgrounds'
@@ -44,7 +44,7 @@ interface Props {
   enabled: boolean
   profile: Profile | null
   canvasRef: RefObject<HTMLCanvasElement | null>
-  onAIAttack: () => void
+  onAIAttack: (zone: AttackZone) => void
 }
 
 export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props) {
@@ -119,8 +119,9 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
       timerId = setTimeout(() => {
         if (!mountedRef.current) return
         if (aiHpRef.current > 0) {
+          const zone: AttackZone = Math.random() < 0.5 ? 'head' : 'body'
           transitionPose(ATTACK_POSE)
-          setTimeout(() => { if (mountedRef.current) onAIAttackRef.current() }, 300)
+          setTimeout(() => { if (mountedRef.current) onAIAttackRef.current(zone) }, 300)
           setTimeout(() => { if (mountedRef.current) transitionPose(IDLE_POSE) }, 600)
         }
         scheduleNext()

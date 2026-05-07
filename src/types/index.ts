@@ -36,11 +36,18 @@ export interface Match {
 
 export type PoseLandmark = { x: number; y: number; z: number; visibility?: number }
 
-export type GestureState = { isAttacking: boolean; isBlocking: boolean }
+export type AttackZone = 'head' | 'body'
+
+export type GestureState = {
+  isAttacking: boolean
+  isBlocking: boolean
+  attackZone: AttackZone | null
+  blockZone: AttackZone | null
+}
 
 export type GameMessage =
   | { type: 'pose'; landmarks: PoseLandmark[]; t: number }
-  | { type: 'attack' }
+  | { type: 'attack'; zone: AttackZone }
   | { type: 'hp'; value: number }
   | { type: 'blocked' }
   | { type: 'dead' }
