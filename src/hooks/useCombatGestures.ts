@@ -7,13 +7,17 @@ const ARM_EXTENSION_THRESHOLD = 0.18
 const ATTACK_COOLDOWN_MS = 600
 const HISTORY_SIZE = 8
 
-// Shield (left wrist) covers head if above left shoulder, body if near chest
+// Thresholds relative to torso height so they work regardless of camera angle or distance.
+// torsoH = hip.y - shoulder.y (always positive, clamped to min 0.12)
+
 export function getBlockZone(landmarks: PoseLandmark[]): AttackZone | null {
   if (landmarks.length < 29) return null
-  const lWrist = landmarks[15]
+  const lWrist    = landmarks[15]
   const lShoulder = landmarks[11]
-  if (lWrist.y < lShoulder.y) return 'head'
-  if (lWrist.y < lShoulder.y + 0.20) return 'body'
+  const lHip      = landmarks[23]
+  const torsoH    = Math.max(0.12, lHip.y - lShoulder.y)
+  if (lWrist.y < lShoulder.y + torsoH * 0.15) return 'head'
+  if (lWrist.y < lShoulder.y + torsoH * 0.70) return 'body'
   return null
 }
 
@@ -21,11 +25,14 @@ export function isBlocking(landmarks: PoseLandmark[]): boolean {
   return getBlockZone(landmarks) !== null
 }
 
-// Blade tip zone: right wrist Y determines target (head < 0.22, body 0.22–0.52)
+// Right wrist Y relative to torso: above shoulder = head, within torso = body
 function getAttackZone(landmarks: PoseLandmark[]): AttackZone | null {
-  const rWrist = landmarks[16]
-  if (rWrist.y < 0.22) return 'head'
-  if (rWrist.y < 0.52) return 'body'
+  const rWrist    = landmarks[16]
+  const rShoulder = landmarks[12]
+  const rHip      = landmarks[24]
+  const torsoH    = Math.max(0.12, rHip.y - rShoulder.y)
+  if (rWrist.y < rShoulder.y + torsoH * 0.15) return 'head'
+  if (rWrist.y < rShoulder.y + torsoH * 1.20) return 'body'
   return null
 }
 

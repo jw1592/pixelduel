@@ -8,7 +8,9 @@ function makeLandmarks(overrides: Partial<Record<number, Partial<PoseLandmark>>>
   lms[12] = { x: 0.6, y: 0.35, z: 0 } // right shoulder
   lms[14] = { x: 0.7, y: 0.50, z: 0 } // right elbow
   lms[15] = { x: 0.3, y: 0.75, z: 0 } // left wrist (hanging down — not blocking)
-  lms[16] = { x: 0.8, y: 0.40, z: 0 } // right wrist (body zone: 0.22–0.52)
+  lms[16] = { x: 0.8, y: 0.40, z: 0 } // right wrist — body zone with torsoH=0.30: 0.35+0.30*1.2=0.71
+  lms[23] = { x: 0.4, y: 0.65, z: 0 } // left hip  → torsoH = max(0.12, 0.65-0.35) = 0.30
+  lms[24] = { x: 0.6, y: 0.65, z: 0 } // right hip → torsoH = max(0.12, 0.65-0.35) = 0.30
   Object.entries(overrides).forEach(([i, v]) => {
     lms[Number(i)] = { ...lms[Number(i)], ...v }
   })
@@ -65,9 +67,10 @@ describe('detectGestures', () => {
     expect(result.attackZone).toBe('head')
   })
 
-  it('does not detect attack when wrist is below attack zone (> 0.52)', () => {
-    const lms = makeLandmarks({ 12: { x: 0.6, y: 0.35 }, 16: { x: 0.8, y: 0.70 } })
-    const yHistory = [0.30, 0.40, 0.50, 0.60, 0.65, 0.70, 0.70, 0.70]
+  it('does not detect attack when wrist is below attack zone', () => {
+    // torsoH=0.30 → body attack threshold = 0.35+0.30*1.2 = 0.71; wrist at 0.80 is outside
+    const lms = makeLandmarks({ 12: { x: 0.6, y: 0.35 }, 16: { x: 0.8, y: 0.80 } })
+    const yHistory = [0.40, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
     const xHistory = Array(8).fill(0.80)
     const result = detectGestures(lms, yHistory, xHistory)
     expect(result.isAttacking).toBe(false)
@@ -112,10 +115,11 @@ describe('getBlockZone', () => {
     expect(getBlockZone(lms)).toBe('head')
   })
 
-  it('returns body when wrist is within 0.20 below shoulder', () => {
+  it('returns body when wrist is within torso height below shoulder', () => {
     const lms: PoseLandmark[] = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, z: 0 }))
     lms[11] = { x: 0.4, y: 0.40, z: 0 }
-    lms[15] = { x: 0.4, y: 0.55, z: 0 } // 0.40 + 0.20 = 0.60 → 0.55 < 0.60 → body
+    lms[23] = { x: 0.4, y: 0.70, z: 0 } // torsoH = max(0.12, 0.70-0.40) = 0.30 → body threshold = 0.40+0.21 = 0.61
+    lms[15] = { x: 0.4, y: 0.55, z: 0 } // 0.55 < 0.61 → body
     expect(getBlockZone(lms)).toBe('body')
   })
 })
