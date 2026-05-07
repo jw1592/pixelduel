@@ -138,7 +138,8 @@ export function drawCharacter(
   w: number,
   h: number,
   colors?: { skin?: string; shirt?: string; pants?: string },
-  isBlocking?: boolean
+  isBlocking?: boolean,
+  upperBodyOnly?: boolean
 ) {
   if (landmarks.length < 29) return
 
@@ -171,10 +172,12 @@ export function drawCharacter(
   drawSegment(ctx, lElbow, lWrist, limbThick, SKIN)
   drawSegment(ctx, rShoulder, rElbow, limbThick, SKIN)
   drawSegment(ctx, rElbow, rWrist, limbThick, SKIN)
-  drawSegment(ctx, lHip, lKnee, limbThick, PANTS)
-  drawSegment(ctx, lKnee, lAnkle, limbThick, PANTS)
-  drawSegment(ctx, rHip, rKnee, limbThick, PANTS)
-  drawSegment(ctx, rKnee, rAnkle, limbThick, PANTS)
+  if (!upperBodyOnly) {
+    drawSegment(ctx, lHip, lKnee, limbThick, PANTS)
+    drawSegment(ctx, lKnee, lAnkle, limbThick, PANTS)
+    drawSegment(ctx, rHip, rKnee, limbThick, PANTS)
+    drawSegment(ctx, rKnee, rAnkle, limbThick, PANTS)
+  }
 
   // Lightsaber on right hand
   const forearmDx = rWrist.x - rElbow.x
