@@ -21,6 +21,8 @@ export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, 
   const dcRef = useRef<RTCDataChannel | null>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const isPlayer1 = user.id === player1Id
+  const onDisconnectRef = useRef(onDisconnect)
+  useEffect(() => { onDisconnectRef.current = onDisconnect })
 
   const sendMessage = useCallback((msg: GameMessage) => {
     const dc = dcRef.current
@@ -54,11 +56,11 @@ export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, 
             if (disconnectTimer) clearTimeout(disconnectTimer)
             disconnectTimer = setTimeout(() => {
               if (!aborted && wasConnected) {
-                onDisconnect?.()
+                onDisconnectRef.current?.()
               }
             }, 3000)
           }
-        } else if (state === 'connected' || state === 'complete') {
+        } else if (state === 'connected' || state === 'closed') {
           if (disconnectTimer) {
             clearTimeout(disconnectTimer)
             disconnectTimer = null
@@ -180,7 +182,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, 
       setConnected(false)
       if (signalChannel) supabase.removeChannel(signalChannel)
     }
-  }, [enabled, matchId, isPlayer1, user.id, avatarCanvasRef, onMessage, onDisconnect])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, matchId, isPlayer1, user.id, avatarCanvasRef, onMessage])  // eslint-disable-line react-hooks/exhaustive-deps
 
   return { connected, sendMessage, remoteVideoRef }
 }
