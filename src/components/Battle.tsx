@@ -222,18 +222,16 @@ export function Battle({ user }: Props) {
 
   useEffect(() => {
     if (battleStatus === 'victory' || battleStatus === 'defeat') {
-      const col = battleStatus === 'victory' ? 'wins' : 'losses'
-      const isPvpWin = !isAI && battleStatus === 'victory'
-      const selectCols = isPvpWin ? `${col}, pvp_wins` : col
-      supabase.from('profiles').select(selectCols).eq('id', user.id).single()
-        .then(({ data, error }) => {
-          if (error || !data) { console.error('stat fetch error:', error); return }
-          const d = data as unknown as Record<string, number>
-          const updates: Record<string, number> = { [col]: d[col] + 1 }
-          if (isPvpWin) updates.pvp_wins = (d.pvp_wins ?? 0) + 1
-          return supabase.from('profiles').update(updates).eq('id', user.id)
-        })
-        .then(res => { if (res?.error) console.error('stat update error:', res.error) })
+      if (!isAI) {
+        const col = battleStatus === 'victory' ? 'wins' : 'losses'
+        supabase.from('profiles').select(col).eq('id', user.id).single()
+          .then(({ data, error }) => {
+            if (error || !data) { console.error('stat fetch error:', error); return }
+            const d = data as unknown as Record<string, number>
+            return supabase.from('profiles').update({ [col]: d[col] + 1 }).eq('id', user.id)
+          })
+          .then(res => { if (res?.error) console.error('stat update error:', res.error) })
+      }
       const t = setTimeout(() => navigate('/'), 6000)
       return () => clearTimeout(t)
     }
