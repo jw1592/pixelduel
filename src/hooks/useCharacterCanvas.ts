@@ -101,7 +101,7 @@ function drawFirstPersonArms(
   drawSegment(ctx, rElbow, rWrist, limbThick, SKIN)
 
   // Shield on left wrist
-  drawShield(ctx, lWrist, limbThick * 2.8, blocking)
+  drawShield(ctx, lWrist, limbThick * 4.0, blocking)
 
   // Lightsaber on right hand
   const faDx = rWrist.x - rElbow.x
@@ -207,7 +207,7 @@ export function drawCharacter(
   }
 
   // Shield on left wrist
-  const shieldSize = Math.max(12, limbThick * 1.8)
+  const shieldSize = Math.max(20, limbThick * 2.8)
   drawShield(ctx, lWrist, shieldSize, !!isBlocking)
 
   // Head
