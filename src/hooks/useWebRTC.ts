@@ -45,13 +45,17 @@ export function useWebRTC({ enabled, user, matchId, player1Id, videoRef, onMessa
       pc.oniceconnectionstatechange = () => console.log('[webrtc] ICE state:', pc?.iceConnectionState)
       pc.onconnectionstatechange = () => console.log('[webrtc] connection state:', pc?.connectionState)
 
-      const video = videoRef.current
-      console.log('[webrtc] videoRef:', video, '| isPlayer1:', isPlayer1)
-      if (video) {
-        const stream = (video as HTMLVideoElement & { captureStream: (fps: number) => MediaStream }).captureStream(30)
+      // Add webcam track to peer connection — called just before offer/answer so webcam is ready
+      const addVideoTrack = () => {
+        const video = videoRef.current
+        if (!video?.srcObject) return
+        const stream = video.srcObject as MediaStream
         const tracks = stream.getVideoTracks()
-        console.log('[webrtc] video tracks to add:', tracks.length)
-        tracks.forEach(t => pc!.addTrack(t, stream))
+        const senders = pc!.getSenders()
+        tracks.forEach(t => {
+          if (!senders.find(s => s.track === t)) pc!.addTrack(t, stream)
+        })
+        console.log('[webrtc] video tracks added:', tracks.length)
       }
 
       pc.ontrack = (e) => {
@@ -94,6 +98,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, videoRef, onMessa
       const sendOffer = async () => {
         if (!pc || offerSent || aborted) return
         offerSent = true
+        addVideoTrack()
         try {
           const offer = await pc.createOffer()
           await pc.setLocalDescription(offer)
@@ -118,6 +123,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, videoRef, onMessa
           try {
             const signal = payload as WebRTCSignal
             if (signal.type === 'offer' && !isPlayer1) {
+              addVideoTrack()
               await pc.setRemoteDescription({ type: 'offer', sdp: signal.sdp })
               const answer = await pc.createAnswer()
               await pc.setLocalDescription(answer)
