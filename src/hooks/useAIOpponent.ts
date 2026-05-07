@@ -3,6 +3,8 @@ import type { RefObject } from 'react'
 import type { Profile, PoseLandmark } from '../types'
 import { AI_CHARACTERS } from '../data/aiCharacters'
 import { IDLE_POSE, ATTACK_POSE, BLOCK_POSE } from '../data/aiPoses'
+import { BATTLE_BACKGROUNDS, drawBackground } from '../data/battleBackgrounds'
+import type { BattleBackground } from '../data/battleBackgrounds'
 import { drawCharacter } from './useCharacterCanvas'
 
 const MAX_HP = 100
@@ -53,6 +55,10 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
     aiNameRef.current = AI_CHARACTERS[Math.floor(Math.random() * AI_CHARACTERS.length)]
   }
 
+  const bgRef = useRef<BattleBackground>(
+    BATTLE_BACKGROUNDS[Math.floor(Math.random() * BATTLE_BACKGROUNDS.length)]
+  )
+
   const poseFromRef = useRef<PoseLandmark[]>(IDLE_POSE)
   const poseToRef = useRef<PoseLandmark[]>(IDLE_POSE)
   const poseStartRef = useRef<number>(0)
@@ -91,8 +97,7 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
             x: (lm.x - cx) * zoom + cx,
             y: (lm.y - cy) * zoom + cy + 0.04,
           }))
-          ctx.fillStyle = '#1a1a1a'
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
+          drawBackground(ctx, bgRef.current, canvas.width, canvas.height)
           drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors, aiBlockingRef.current)
         }
       }
