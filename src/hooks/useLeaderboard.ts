@@ -18,6 +18,7 @@ export function useLeaderboard(limit = 10) {
       .from('profiles')
       .select('id, display_name, avatar_url, country_code, pvp_wins')
       .order('pvp_wins', { ascending: false })
+      .order('wins', { ascending: false })
       .limit(limit)
       .then(({ data, error }) => {
         if (error) { console.error('leaderboard fetch error:', error); return }

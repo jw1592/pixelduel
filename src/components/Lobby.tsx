@@ -110,6 +110,10 @@ export function Lobby({ user, onSignOut, onlineCount }: Props) {
             <p className="text-gray-500">DRAW</p>
             <p className="text-white mt-1">{profile.draws}</p>
           </div>
+          <div>
+            <p className="text-yellow-500">PVP</p>
+            <p className="text-white mt-1">{profile.pvp_wins}</p>
+          </div>
         </div>
 
         {total > 0 && (

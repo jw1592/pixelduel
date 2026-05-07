@@ -10,7 +10,7 @@ const HISTORY_SIZE = 8
 
 export function isBlocking(landmarks: PoseLandmark[]): boolean {
   return landmarks.length >= 29 &&
-    landmarks[16].y < landmarks[12].y - BLOCK_Y_MARGIN
+    landmarks[15].y < landmarks[11].y - BLOCK_Y_MARGIN
 }
 
 export function detectGestures(
@@ -22,8 +22,10 @@ export function detectGestures(
 
   const rShoulder = landmarks[12]
   const rWrist = landmarks[16]
+  const lShoulder = landmarks[11]
+  const lWrist = landmarks[15]
 
-  const blocking = rWrist.y < rShoulder.y - BLOCK_Y_MARGIN
+  const blocking = lWrist.y < lShoulder.y - BLOCK_Y_MARGIN
 
   const armLength = Math.hypot(rWrist.x - rShoulder.x, rWrist.y - rShoulder.y)
   const isExtended = armLength > ARM_EXTENSION_THRESHOLD
