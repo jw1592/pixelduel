@@ -12,9 +12,10 @@ interface Props {
   player2Id: string
   avatarCanvasRef: React.RefObject<HTMLCanvasElement | null>
   onMessage: (msg: GameMessage) => void
+  onDisconnect?: () => void
 }
 
-export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, onMessage }: Props) {
+export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, onMessage, onDisconnect }: Props) {
   const [connected, setConnected] = useState(false)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const dcRef = useRef<RTCDataChannel | null>(null)
@@ -34,6 +35,8 @@ export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, 
     let pc: RTCPeerConnection | undefined
     let signalChannel: ReturnType<typeof supabase.channel> | undefined
     let offerSent = false
+    let wasConnected = false
+    let disconnectTimer: ReturnType<typeof setTimeout> | null = null
 
     const setup = async () => {
       const iceServers = await fetchIceServers()
@@ -43,7 +46,25 @@ export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, 
       pcRef.current = pc
 
       pc.oniceconnectionstatechange = () => console.log('[webrtc] ICE state:', pc?.iceConnectionState)
-      pc.onconnectionstatechange = () => console.log('[webrtc] connection state:', pc?.connectionState)
+      pc.onconnectionstatechange = () => {
+        console.log('[webrtc] connection state:', pc?.connectionState)
+        const state = pc?.connectionState
+        if (state === 'disconnected' || state === 'failed') {
+          if (wasConnected && !aborted) {
+            if (disconnectTimer) clearTimeout(disconnectTimer)
+            disconnectTimer = setTimeout(() => {
+              if (!aborted && wasConnected) {
+                onDisconnect?.()
+              }
+            }, 3000)
+          }
+        } else if (state === 'connected' || state === 'complete') {
+          if (disconnectTimer) {
+            clearTimeout(disconnectTimer)
+            disconnectTimer = null
+          }
+        }
+      }
 
       // Add avatar canvas stream track to peer connection
       const addVideoTrack = () => {
@@ -72,6 +93,7 @@ export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, 
         dc.onmessage = (e) => {
           try { onMessage(JSON.parse(e.data) as GameMessage) } catch { /* ignore */ }
         }
+        wasConnected = true
         setConnected(true)
       }
 
@@ -151,13 +173,14 @@ export function useWebRTC({ enabled, user, matchId, player1Id, avatarCanvasRef, 
 
     return () => {
       aborted = true
+      if (disconnectTimer) clearTimeout(disconnectTimer)
       pcRef.current?.close()
       pcRef.current = null
       dcRef.current = null
       setConnected(false)
       if (signalChannel) supabase.removeChannel(signalChannel)
     }
-  }, [enabled, matchId, isPlayer1, user.id, avatarCanvasRef, onMessage])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, matchId, isPlayer1, user.id, avatarCanvasRef, onMessage, onDisconnect])  // eslint-disable-line react-hooks/exhaustive-deps
 
   return { connected, sendMessage, remoteVideoRef }
 }
