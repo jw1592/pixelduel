@@ -8,7 +8,7 @@ function countryFlag(code: string | null): string {
 
 export function Leaderboard() {
   const navigate = useNavigate()
-  const { entries, loading } = useLeaderboard(20)
+  const { entries, loading } = useLeaderboard(10)
 
   return (
     <div className="min-h-screen flex flex-col items-center px-4 py-8 gap-6">

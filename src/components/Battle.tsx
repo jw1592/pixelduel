@@ -14,7 +14,7 @@ import { useLightsaberSound } from '../hooks/useLightsaberSound'
 import type { GameMessage, BattleStatus } from '../types'
 
 const VICTORY_LOTTIE = 'https://assets-v2.lottiefiles.com/a/79e175d2-1174-11ee-9fca-272a6738b821/JYhWAkgfAS.lottie'
-const DEFEAT_LOTTIE  = 'https://assets-v2.lottiefiles.com/a/d79b76c8-1188-11ee-871d-bbbb54647fa9/kQzCXiJdZ0.lottie'
+const DEFEAT_LOTTIE  = 'https://assets-v2.lottiefiles.com/a/ce9f26b0-1164-11ee-9b7e-239ff0ec29ac/b2Ypt20XAK.lottie'
 
 const MAX_HP = 100
 const HIT_DAMAGE = 10
