@@ -345,7 +345,7 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop, firstPerso
           const scaled = landmarks.map(lm => ({
             ...lm,
             x: ((1 - lm.x) - cx) * ZOOM + cx,
-            y: lm.y * ZOOM + 0.15,
+            y: lm.y * ZOOM,
           }))
           // Player1 = blue team, player2 = red team
           const teamColors = isPlayer1 !== false
