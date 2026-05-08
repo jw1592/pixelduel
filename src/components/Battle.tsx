@@ -55,6 +55,7 @@ export function Battle({ user }: Props) {
   const [myHp, setMyHp] = useState(MAX_HP)
   const [opponentHp, setOpponentHp] = useState(MAX_HP)
   const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
+  const [countdownValue, setCountdownValue] = useState<number | null>(null)
   const [myFlash, setMyFlash] = useState(false)
   const [opponentFlash, setOpponentFlash] = useState(false)
   const [combatFeedback, setCombatFeedback] = useState<{ text: string; color: string; id: number; side: 'left' | 'right' } | null>(null)
@@ -211,11 +212,28 @@ export function Battle({ user }: Props) {
 
   useEffect(() => {
     if (connected) {
-      setBattleStatus('active')
+      setBattleStatus('countdown')
       startHum()
     }
     return () => { if (!isAI) stopHum() }
   }, [connected, isAI, startHum, stopHum])
+
+  useEffect(() => {
+    if (battleStatus !== 'countdown') return
+    let count = 3
+    setCountdownValue(count)
+    const id = setInterval(() => {
+      count--
+      if (count > 0) {
+        setCountdownValue(count)
+      } else {
+        clearInterval(id)
+        setCountdownValue(null)
+        setBattleStatus('active')
+      }
+    }, 1000)
+    return () => clearInterval(id)
+  }, [battleStatus])
 
   useEffect(() => {
     if (!isAI) return
@@ -254,7 +272,7 @@ export function Battle({ user }: Props) {
   }, [battleStatus, isAI, user.id, navigate])
 
   useEffect(() => {
-    if (battleStatus !== 'active') return
+    if (battleStatus !== 'active' && battleStatus !== 'countdown') return
     const id = setInterval(updateGestures, 50)
     return () => clearInterval(id)
   }, [battleStatus, updateGestures])
@@ -472,6 +490,19 @@ export function Battle({ user }: Props) {
       {poseStatus === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <p className="text-gray-600 text-xs">Loading pose model...</p>
+        </div>
+      )}
+
+      {/* Battle countdown */}
+      {battleStatus === 'countdown' && countdownValue !== null && (
+        <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+          <span
+            key={countdownValue}
+            className="text-white font-bold select-none"
+            style={{ fontSize: '20vw', textShadow: '0 0 60px rgba(255,255,255,0.6), 0 4px 20px rgba(0,0,0,0.8)' }}
+          >
+            {countdownValue}
+          </span>
         </div>
       )}
 

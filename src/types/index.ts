@@ -59,4 +59,4 @@ export type WebRTCSignal =
   | { type: 'answer'; sdp: string }
   | { type: 'ice'; candidate: RTCIceCandidateInit }
 
-export type BattleStatus = 'connecting' | 'active' | 'victory' | 'defeat'
+export type BattleStatus = 'connecting' | 'countdown' | 'active' | 'victory' | 'defeat'
