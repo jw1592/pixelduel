@@ -311,7 +311,7 @@ export function Battle({ user }: Props) {
   useEffect(() => {
     if (gesture.isAttacking && !prevAttackingRef.current && battleStatus === 'active') {
       if (isAI) {
-        const result = receiveAttack()
+        const result = receiveAttack(gesture.attackZone!)
         if (result === 'hit') {
           showFeedback('ATTACK SUCCESS', '#f97316', 'right')
           setOpponentFlash(true)

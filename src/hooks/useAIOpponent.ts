@@ -2,14 +2,18 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 import type { RefObject } from 'react'
 import type { Profile, PoseLandmark, AttackZone } from '../types'
 import { AI_CHARACTERS } from '../data/aiCharacters'
-import { IDLE_POSE, ATTACK_POSE, BLOCK_POSE } from '../data/aiPoses'
+import {
+  IDLE_POSE, IDLE_SWAY_L, IDLE_SWAY_R,
+  ATTACK_HEAD_POSE, ATTACK_BODY_POSE,
+  BLOCK_HEAD_POSE, BLOCK_BODY_POSE,
+} from '../data/aiPoses'
 import { BATTLE_BACKGROUNDS, drawBackground } from '../data/battleBackgrounds'
 import type { BattleBackground } from '../data/battleBackgrounds'
 import { drawCharacter } from './useCharacterCanvas'
 
 const MAX_HP = 100
 const HIT_DAMAGE = 10
-const LERP_DURATION = 250
+const LERP_DURATION = 200
 
 const MOB_COLORS: Record<string, { skin: string; shirt: string; pants: string }> = {
   Creeper:  { skin: '#5dc45d', shirt: '#3a8a3a', pants: '#2a6a2a' },
@@ -23,9 +27,9 @@ const MOB_COLORS: Record<string, { skin: string; shirt: string; pants: string }>
 
 export function getDifficulty(wins: number, losses: number) {
   const winRate = wins / (wins + losses + 1)
-  if (winRate < 0.3) return { minInterval: 1200, maxInterval: 2800, blockChance: 0.40 }
-  if (winRate < 0.6) return { minInterval: 700,  maxInterval: 1600, blockChance: 0.60 }
-  return               { minInterval: 400,  maxInterval: 900,  blockChance: 0.80 }
+  if (winRate < 0.3) return { minInterval: 800,  maxInterval: 1600, blockChance: 0.35 }
+  if (winRate < 0.6) return { minInterval: 450,  maxInterval: 950,  blockChance: 0.60 }
+  return               { minInterval: 250,  maxInterval: 550,  blockChance: 0.80 }
 }
 
 function randInterval(min: number, max: number): number {
@@ -64,6 +68,8 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
   const poseStartRef = useRef<number>(0)
   const blockChanceRef = useRef(0.15)
   const aiBlockingRef = useRef(false)
+  const isActingRef = useRef(false)
+  const swaySideRef = useRef(false)
   const onAIAttackRef = useRef(onAIAttack)
   const mountedRef = useRef(true)
 
@@ -79,6 +85,7 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
     poseStartRef.current = performance.now()
   }, [])
 
+  // Render loop
   useEffect(() => {
     if (!enabled) return
     let rafId: number
@@ -90,15 +97,15 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
         if (ctx) {
           const t = Math.min(1, (performance.now() - poseStartRef.current) / LERP_DURATION)
           const lms = lerpLandmarks(poseFromRef.current, poseToRef.current, t)
-          const zoom = 1.1
+          const zoom = 0.75
           const cx = 0.5
           const scaledLms = lms.map(lm => ({
             ...lm,
             x: (lm.x - cx) * zoom + cx,
-            y: lm.y * zoom + 0.06,
+            y: lm.y * zoom,
           }))
           drawBackground(ctx, bgRef.current, canvas.width, canvas.height)
-          drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors, aiBlockingRef.current, true, true)
+          drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors, aiBlockingRef.current, false, true)
         }
       }
       rafId = requestAnimationFrame(render)
@@ -107,6 +114,26 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
     return () => cancelAnimationFrame(rafId)
   }, [enabled, canvasRef])
 
+  // Idle sway loop
+  useEffect(() => {
+    if (!enabled) return
+    let timerId: ReturnType<typeof setTimeout>
+    const doSway = () => {
+      if (mountedRef.current && !isActingRef.current) {
+        const pose = swaySideRef.current ? IDLE_SWAY_R : IDLE_SWAY_L
+        swaySideRef.current = !swaySideRef.current
+        transitionPose(pose)
+        setTimeout(() => {
+          if (mountedRef.current && !isActingRef.current) transitionPose(IDLE_POSE)
+        }, 350)
+      }
+      timerId = setTimeout(doSway, randInterval(700, 1000))
+    }
+    timerId = setTimeout(doSway, randInterval(400, 700))
+    return () => clearTimeout(timerId)
+  }, [enabled, transitionPose])
+
+  // Action loop (attack / proactive block)
   useEffect(() => {
     if (!enabled) return
     const wins = profile?.wins ?? 0
@@ -119,10 +146,34 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
       timerId = setTimeout(() => {
         if (!mountedRef.current) return
         if (aiHpRef.current > 0) {
-          const zone: AttackZone = Math.random() < 0.5 ? 'head' : 'body'
-          transitionPose(ATTACK_POSE)
-          setTimeout(() => { if (mountedRef.current) onAIAttackRef.current(zone) }, 300)
-          setTimeout(() => { if (mountedRef.current) transitionPose(IDLE_POSE) }, 600)
+          const roll = Math.random()
+          if (roll < 0.65) {
+            const zone: AttackZone = Math.random() < 0.5 ? 'head' : 'body'
+            const attackPose = zone === 'head' ? ATTACK_HEAD_POSE : ATTACK_BODY_POSE
+            isActingRef.current = true
+            transitionPose(attackPose)
+            setTimeout(() => { if (mountedRef.current) onAIAttackRef.current(zone) }, 300)
+            setTimeout(() => {
+              if (mountedRef.current) {
+                transitionPose(IDLE_POSE)
+                isActingRef.current = false
+              }
+            }, 600)
+          } else if (roll < 0.85) {
+            const zone: AttackZone = Math.random() < 0.5 ? 'head' : 'body'
+            const blockPose = zone === 'head' ? BLOCK_HEAD_POSE : BLOCK_BODY_POSE
+            isActingRef.current = true
+            aiBlockingRef.current = true
+            transitionPose(blockPose)
+            setTimeout(() => {
+              if (mountedRef.current) {
+                aiBlockingRef.current = false
+                transitionPose(IDLE_POSE)
+                isActingRef.current = false
+              }
+            }, 450)
+          }
+          // 15%: no action — sway loop handles movement
         }
         scheduleNext()
       }, randInterval(minInterval, maxInterval))
@@ -132,15 +183,18 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
     return () => clearTimeout(timerId)
   }, [enabled, profile, transitionPose])
 
-  const receiveAttack = useCallback((): 'hit' | 'blocked' => {
+  const receiveAttack = useCallback((zone: AttackZone): 'hit' | 'blocked' => {
     const blocking = Math.random() < blockChanceRef.current
     if (blocking) {
+      const blockPose = zone === 'head' ? BLOCK_HEAD_POSE : BLOCK_BODY_POSE
+      isActingRef.current = true
       aiBlockingRef.current = true
-      transitionPose(BLOCK_POSE)
+      transitionPose(blockPose)
       setTimeout(() => {
         if (mountedRef.current) {
           aiBlockingRef.current = false
           transitionPose(IDLE_POSE)
+          isActingRef.current = false
         }
       }, 400)
       return 'blocked'
