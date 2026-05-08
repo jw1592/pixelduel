@@ -56,6 +56,9 @@ export function Battle({ user }: Props) {
   const [opponentHp, setOpponentHp] = useState(MAX_HP)
   const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
   const [countdownValue, setCountdownValue] = useState<number | null>(null)
+  const [timeLeft, setTimeLeft] = useState<number | null>(null)
+  const myHpRef = useRef(MAX_HP)
+  const opponentHpRef = useRef(MAX_HP)
   const [myFlash, setMyFlash] = useState(false)
   const [opponentFlash, setOpponentFlash] = useState(false)
   const [combatFeedback, setCombatFeedback] = useState<{ text: string; color: string; id: number; side: 'left' | 'right' } | null>(null)
@@ -83,6 +86,7 @@ export function Battle({ user }: Props) {
 
   useEffect(() => { blockingRef.current = gesture.isBlocking }, [gesture.isBlocking])
   useEffect(() => { battleStatusRef.current = battleStatus }, [battleStatus])
+  useEffect(() => { myHpRef.current = myHp }, [myHp])
 
   const sendMessageRef = useRef<((msg: GameMessage) => void) | null>(null)
   const { startHum, stopHum, playSwing, playHit } = useLightsaberSound()
@@ -107,6 +111,8 @@ export function Battle({ user }: Props) {
       }
     },
   })
+
+  useEffect(() => { opponentHpRef.current = isAI ? aiHp : opponentHp }, [isAI, aiHp, opponentHp])
 
   const opponentAfkRef = useRef(false)
   const [myAfkCountdown, setMyAfkCountdown] = useState<number | null>(null)
@@ -270,6 +276,30 @@ export function Battle({ user }: Props) {
       return () => clearTimeout(t)
     }
   }, [battleStatus, isAI, user.id, navigate])
+
+  useEffect(() => {
+    if (battleStatus !== 'active') return
+    setTimeLeft(60)
+    const id = setInterval(() => {
+      setTimeLeft(t => (t !== null && t > 0) ? t - 1 : 0)
+    }, 1000)
+    return () => clearInterval(id)
+  }, [battleStatus])
+
+  useEffect(() => {
+    if (timeLeft !== 0 || battleStatus !== 'active') return
+    if (myHpRef.current >= opponentHpRef.current) {
+      setBattleStatus('victory')
+      if (!isAI && matchId) {
+        void supabase.from('matches')
+          .update({ status: 'finished', winner_id: user.id })
+          .eq('id', matchId)
+          .then(({ error }) => { if (error) console.error(error) })
+      }
+    } else {
+      setBattleStatus('defeat')
+    }
+  }, [timeLeft, battleStatus, isAI, matchId, user.id])
 
   useEffect(() => {
     if (battleStatus !== 'active' && battleStatus !== 'countdown') return
@@ -455,8 +485,30 @@ export function Battle({ user }: Props) {
       )}
 
       {/* HP bars at top */}
-      <div className="absolute top-0 left-0 right-0 flex gap-2 px-2 pt-2 z-10">
+      <div className="absolute top-0 left-0 right-0 flex gap-2 px-2 pt-2 z-10 items-start">
         <HpBar hp={myHp} label="YOU" />
+        <div className="flex-shrink-0 flex flex-col items-center justify-center w-10 pt-0.5">
+          {timeLeft !== null && (() => {
+            const urgent = timeLeft <= 10
+            const critical = timeLeft <= 5
+            return (
+              <span
+                key={timeLeft}
+                className={critical ? 'timer-critical' : urgent ? 'timer-urgent' : ''}
+                style={{
+                  fontFamily: 'var(--font-pixel)',
+                  fontWeight: 'bold',
+                  lineHeight: 1,
+                  fontSize: urgent ? '1.6rem' : '0.75rem',
+                  color: critical ? '#ef4444' : urgent ? '#f97316' : '#9ca3af',
+                  textShadow: urgent ? `0 0 18px ${critical ? '#ef4444aa' : '#f97316aa'}` : 'none',
+                }}
+              >
+                {timeLeft}
+              </span>
+            )
+          })()}
+        </div>
         <HpBar hp={isAI ? aiHp : opponentHp} label={isAI ? aiName.toUpperCase() : 'OPPONENT'} flip />
       </div>
 

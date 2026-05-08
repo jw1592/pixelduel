@@ -25,6 +25,26 @@ body {
   100% { opacity: 0;   transform: translateY(-32px); }
 }
 
+@keyframes timer-tick {
+  0%   { transform: scale(1.55); }
+  100% { transform: scale(1.0); }
+}
+
+@keyframes timer-flash {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+.timer-urgent {
+  animation: timer-tick 0.22s cubic-bezier(0.2, 0, 0.2, 1);
+  display: inline-block;
+}
+
+.timer-critical {
+  animation: timer-tick 0.22s cubic-bezier(0.2, 0, 0.2, 1), timer-flash 0.4s ease-in-out;
+  display: inline-block;
+}
+
 .combat-feedback {
   position: absolute;
   white-space: nowrap;
