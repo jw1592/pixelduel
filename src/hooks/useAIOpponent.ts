@@ -102,7 +102,7 @@ export function useAIOpponent({ enabled, profile, canvasRef, onAIAttack }: Props
           const scaledLms = lms.map(lm => ({
             ...lm,
             x: (lm.x - cx) * zoom + cx,
-            y: lm.y * zoom,
+            y: lm.y * zoom + 0.15,
           }))
           drawBackground(ctx, bgRef.current, canvas.width, canvas.height)
           drawCharacter(ctx, scaledLms, null, canvas.width, canvas.height, colors, aiBlockingRef.current, false, true)
