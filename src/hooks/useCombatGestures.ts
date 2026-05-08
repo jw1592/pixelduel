@@ -3,7 +3,7 @@ import type { PoseLandmark, GestureState, AttackZone } from '../types'
 
 const SWING_SPEED_THRESHOLD = 0.05
 const SWING_HISTORY_WINDOW = 5
-const ARM_EXTENSION_THRESHOLD = 0.18
+const ARM_EXTENSION_THRESHOLD = 0.12
 const ATTACK_COOLDOWN_MS = 600
 const HISTORY_SIZE = 8
 
@@ -15,7 +15,7 @@ export function getBlockZone(landmarks: PoseLandmark[]): AttackZone | null {
   const lWrist    = landmarks[15]
   const lShoulder = landmarks[11]
   const lHip      = landmarks[23]
-  const torsoH    = Math.max(0.12, lHip.y - lShoulder.y)
+  const torsoH    = Math.max(0.30,lHip.y - lShoulder.y)
   if (lWrist.y < lShoulder.y + torsoH * 0.15) return 'head'
   if (lWrist.y < lShoulder.y + torsoH * 0.70) return 'body'
   return null
@@ -30,7 +30,7 @@ function getAttackZone(landmarks: PoseLandmark[]): AttackZone | null {
   const rWrist    = landmarks[16]
   const rShoulder = landmarks[12]
   const rHip      = landmarks[24]
-  const torsoH    = Math.max(0.12, rHip.y - rShoulder.y)
+  const torsoH    = Math.max(0.30,rHip.y - rShoulder.y)
   if (rWrist.y < rShoulder.y + torsoH * 0.15) return 'head'
   if (rWrist.y < rShoulder.y + torsoH * 1.20) return 'body'
   return null
