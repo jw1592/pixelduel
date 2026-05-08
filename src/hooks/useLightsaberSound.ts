@@ -1,8 +1,9 @@
 import { useRef, useCallback, useEffect } from 'react'
+import bgMusicSrc from '../assets/bg.mp3'
 
 export function useLightsaberSound() {
   const ctxRef = useRef<AudioContext | null>(null)
-  const humStopRef = useRef<(() => void) | null>(null)
+  const bgmRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     const unlock = () => {
@@ -24,60 +25,20 @@ export function useLightsaberSound() {
   }, [])
 
   const startHum = useCallback(() => {
-    if (humStopRef.current) return
-    const ctx = getCtx()
-    const now = ctx.currentTime
-
-    const masterGain = ctx.createGain()
-    masterGain.gain.value = 0
-    masterGain.gain.linearRampToValueAtTime(0.12, now + 0.5)
-    masterGain.connect(ctx.destination)
-
-    const osc1 = ctx.createOscillator()
-    osc1.type = 'sawtooth'
-    osc1.frequency.value = 100
-
-    const osc2 = ctx.createOscillator()
-    osc2.type = 'sine'
-    osc2.frequency.value = 200
-    const osc2Gain = ctx.createGain()
-    osc2Gain.gain.value = 0.4
-
-    const filter = ctx.createBiquadFilter()
-    filter.type = 'lowpass'
-    filter.frequency.value = 380
-    filter.Q.value = 1.5
-
-    const lfo = ctx.createOscillator()
-    lfo.type = 'sine'
-    lfo.frequency.value = 1.5
-    const lfoDepth = ctx.createGain()
-    lfoDepth.gain.value = 0.05
-    const humGain = ctx.createGain()
-    humGain.gain.value = 0.95
-
-    lfo.connect(lfoDepth)
-    lfoDepth.connect(humGain.gain)
-
-    osc1.connect(filter)
-    osc2.connect(osc2Gain)
-    osc2Gain.connect(filter)
-    filter.connect(humGain)
-    humGain.connect(masterGain)
-
-    osc1.start()
-    osc2.start()
-    lfo.start()
-
-    humStopRef.current = () => {
-      masterGain.gain.setTargetAtTime(0, ctx.currentTime, 0.2)
-      setTimeout(() => { try { osc1.stop(); osc2.stop(); lfo.stop() } catch { /* already stopped */ } }, 400)
-      humStopRef.current = null
-    }
-  }, [getCtx])
+    if (bgmRef.current) return
+    const audio = new Audio(bgMusicSrc)
+    audio.loop = true
+    audio.volume = 0.12
+    bgmRef.current = audio
+    audio.play().catch(() => {})
+  }, [])
 
   const stopHum = useCallback(() => {
-    humStopRef.current?.()
+    if (bgmRef.current) {
+      bgmRef.current.pause()
+      bgmRef.current.currentTime = 0
+      bgmRef.current = null
+    }
   }, [])
 
   const playSwing = useCallback(() => {
