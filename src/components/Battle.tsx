@@ -28,12 +28,33 @@ interface BattleRouteState {
   player2_id: string
 }
 
-function HpBar({ hp, label, flip }: { hp: number; label: string; flip?: boolean }) {
+interface PlayerInfo {
+  name: string
+  avatarUrl?: string | null
+  countryCode?: string | null
+}
+
+function toFlag(code: string): string {
+  return [...code.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join('')
+}
+
+function HpBar({ hp, label, flip, playerInfo }: { hp: number; label: string; flip?: boolean; playerInfo?: PlayerInfo }) {
   const pct = Math.max(0, (hp / MAX_HP) * 100)
   const color = pct > 50 ? '#22c55e' : pct > 25 ? '#eab308' : '#ef4444'
+  const flag = playerInfo?.countryCode ? toFlag(playerInfo.countryCode) : null
+  const displayName = playerInfo?.name ?? label
   return (
-    <div className={`w-full px-4 flex flex-col gap-1 ${flip ? 'items-end' : 'items-start'}`}>
-      <span className="text-gray-400 text-xs">{label} {hp}HP</span>
+    <div className={`w-full px-2 flex flex-col gap-1 ${flip ? 'items-end' : 'items-start'}`}>
+      <div className={`flex items-center gap-1.5 max-w-full ${flip ? 'flex-row-reverse' : ''}`}>
+        {playerInfo?.avatarUrl ? (
+          <img src={playerInfo.avatarUrl} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+        ) : null}
+        <span className="text-gray-300 text-xs truncate">
+          {flag && <span className="mr-0.5">{flag}</span>}
+          {displayName}
+        </span>
+        <span className="text-gray-500 text-xs flex-shrink-0">{hp}HP</span>
+      </div>
       <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
         <div
           className="h-full transition-all duration-150 rounded-full"
@@ -52,6 +73,7 @@ export function Battle({ user }: Props) {
   const routeState = (location.state as BattleRouteState | null)
 
   const { profile } = useProfile(user)
+  const [opponentProfile, setOpponentProfile] = useState<import('../types').Profile | null>(null)
   const [myHp, setMyHp] = useState(MAX_HP)
   const [opponentHp, setOpponentHp] = useState(MAX_HP)
   const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
@@ -113,6 +135,13 @@ export function Battle({ user }: Props) {
   })
 
   useEffect(() => { opponentHpRef.current = isAI ? aiHp : opponentHp }, [isAI, aiHp, opponentHp])
+
+  useEffect(() => {
+    if (isAI || !routeState) return
+    const opponentId = user.id === routeState.player1_id ? routeState.player2_id : routeState.player1_id
+    supabase.from('profiles').select('*').eq('id', opponentId).single()
+      .then(({ data }) => { if (data) setOpponentProfile(data as import('../types').Profile) })
+  }, [isAI, routeState, user.id])
 
   const opponentAfkRef = useRef(false)
   const [myAfkCountdown, setMyAfkCountdown] = useState<number | null>(null)
@@ -477,16 +506,17 @@ export function Battle({ user }: Props) {
         <div className="absolute inset-0 pointer-events-none bg-orange-400/40 z-10" />
       )}
 
-      {/* AI name */}
-      {isAI && (
-        <div className="absolute top-14 left-0 right-0 flex justify-center z-10">
-          <span className="text-xs text-gray-600">{aiName.toUpperCase()}</span>
-        </div>
-      )}
-
       {/* HP bars at top */}
       <div className="absolute top-0 left-0 right-0 flex gap-2 px-2 pt-2 z-10 items-start">
-        <HpBar hp={myHp} label="YOU" />
+        <HpBar
+          hp={myHp}
+          label="YOU"
+          playerInfo={{
+            name: profile?.display_name ?? 'YOU',
+            avatarUrl: profile?.avatar_url,
+            countryCode: profile?.country_code,
+          }}
+        />
         <div className="flex-shrink-0 flex flex-col items-center justify-center w-10 pt-0.5">
           {timeLeft !== null && (() => {
             const urgent = timeLeft <= 10
@@ -509,7 +539,17 @@ export function Battle({ user }: Props) {
             )
           })()}
         </div>
-        <HpBar hp={isAI ? aiHp : opponentHp} label={isAI ? aiName.toUpperCase() : 'OPPONENT'} flip />
+        <HpBar
+          hp={isAI ? aiHp : opponentHp}
+          label={isAI ? aiName.toUpperCase() : 'OPPONENT'}
+          flip
+          playerInfo={isAI
+            ? { name: aiName.toUpperCase() }
+            : opponentProfile
+              ? { name: opponentProfile.display_name ?? 'OPPONENT', avatarUrl: opponentProfile.avatar_url, countryCode: opponentProfile.country_code }
+              : undefined
+          }
+        />
       </div>
 
       {/* My arms: first-person transparent overlay */}
