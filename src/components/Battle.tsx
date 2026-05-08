@@ -12,6 +12,7 @@ import { useWebRTC } from '../hooks/useWebRTC'
 import { useAIOpponent } from '../hooks/useAIOpponent'
 import { useLightsaberSound } from '../hooks/useLightsaberSound'
 import type { GameMessage, BattleStatus } from '../types'
+import tutorialSrc from '../assets/tutorial.svg'
 
 const VICTORY_LOTTIE = 'https://assets-v2.lottiefiles.com/a/79e175d2-1174-11ee-9fca-272a6738b821/JYhWAkgfAS.lottie'
 const DEFEAT_LOTTIE  = 'https://assets-v2.lottiefiles.com/a/ce9f26b0-1164-11ee-9b7e-239ff0ec29ac/b2Ypt20XAK.lottie'
@@ -657,6 +658,13 @@ export function Battle({ user }: Props) {
       {poseStatus === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <p className="text-gray-600 text-xs">Loading pose model...</p>
+        </div>
+      )}
+
+      {/* Tutorial hint during countdown */}
+      {battleStatus === 'countdown' && (
+        <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-10 z-25 pointer-events-none">
+          <img src={tutorialSrc} alt="controls" style={{ width: '58vw', maxWidth: 300, opacity: 0.5 }} />
         </div>
       )}
 
