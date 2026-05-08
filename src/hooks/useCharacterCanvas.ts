@@ -291,9 +291,10 @@ interface Props {
   detectLoop: (onFrame: (lms: PoseLandmark[]) => void) => () => void
   firstPerson?: boolean
   blockingRef?: React.RefObject<boolean>
+  isPlayer1?: boolean
 }
 
-export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop, firstPerson, blockingRef }: Props) {
+export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop, firstPerson, blockingRef, isPlayer1 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const avatarCanvasRef = useRef<HTMLCanvasElement>(null)
   const latestLandmarksRef = useRef<PoseLandmark[]>([])
@@ -339,15 +340,20 @@ export function useCharacterCanvas({ videoRef, avatarUrl, detectLoop, firstPerso
           const aw = 640, ah = 480
           if (avatarCanvas.width !== aw) avatarCanvas.width = aw
           if (avatarCanvas.height !== ah) avatarCanvas.height = ah
-          // Mirror x + slight zoom for good upper-body framing
-          const zoom = 1.1, cx = 0.5
+          // Scale character to ~75% so background is visible above/sides — gives depth feel
+          const ZOOM = 0.75, cx = 0.5
           const scaled = landmarks.map(lm => ({
             ...lm,
-            x: ((1 - lm.x) - cx) * zoom + cx,
-            y: lm.y * zoom + 0.05,
+            x: ((1 - lm.x) - cx) * ZOOM + cx,
+            y: lm.y * ZOOM + 0.15,
           }))
+          // Player1 = blue team, player2 = red team
+          const teamColors = isPlayer1 !== false
+            ? { skin: '#c8966b', shirt: '#2a4a8a', pants: '#1a2a5a' }
+            : { skin: '#9a6040', shirt: '#8a2a2a', pants: '#4a1a1a' }
+          const isEnemy = isPlayer1 === false
           drawBackground(actx, bgRef.current, aw, ah)
-          drawCharacter(actx, scaled, null, aw, ah, undefined, blockingRef?.current ?? false, true, false)
+          drawCharacter(actx, scaled, null, aw, ah, teamColors, blockingRef?.current ?? false, false, isEnemy)
           drawFaceInHead(actx, video, landmarks, scaled, aw, ah)
         }
       }

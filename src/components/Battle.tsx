@@ -69,12 +69,14 @@ export function Battle({ user }: Props) {
 
   const { videoRef, status: webcamStatus, start: startWebcam, stop: stopWebcam } = useWebcam()
   const { status: poseStatus, detectLoop } = usePoseLandmarker(videoRef)
+  const isPlayer1 = !isAI && user.id === routeState?.player1_id
   const { canvasRef, avatarCanvasRef, latestLandmarksRef } = useCharacterCanvas({
     videoRef,
     avatarUrl: profile?.avatar_url ?? null,
     detectLoop,
     firstPerson: true,
     blockingRef,
+    isPlayer1,
   })
   const { gesture, update: updateGestures } = useCombatGestures(latestLandmarksRef)
 
