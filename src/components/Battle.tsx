@@ -77,7 +77,8 @@ export function Battle({ user }: Props) {
   const [myHp, setMyHp] = useState(MAX_HP)
   const [opponentHp, setOpponentHp] = useState(MAX_HP)
   const [battleStatus, setBattleStatus] = useState<BattleStatus>(isAI ? 'active' : 'connecting')
-  const [countdownValue, setCountdownValue] = useState<number | null>(null)
+  const [countdownValue, setCountdownValue] = useState<number | string | null>(null)
+  const [endReason, setEndReason] = useState<'ko' | 'timeout'>('ko')
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const myHpRef = useRef(MAX_HP)
   const opponentHpRef = useRef(MAX_HP)
@@ -255,19 +256,16 @@ export function Battle({ user }: Props) {
 
   useEffect(() => {
     if (battleStatus !== 'countdown') return
-    let count = 3
-    setCountdownValue(count)
-    const id = setInterval(() => {
-      count--
-      if (count > 0) {
-        setCountdownValue(count)
-      } else {
-        clearInterval(id)
-        setCountdownValue(null)
-        setBattleStatus('active')
-      }
-    }, 1000)
-    return () => clearInterval(id)
+    const timers: ReturnType<typeof setTimeout>[] = []
+    setCountdownValue(3)
+    timers.push(setTimeout(() => setCountdownValue(2), 1000))
+    timers.push(setTimeout(() => setCountdownValue(1), 2000))
+    timers.push(setTimeout(() => setCountdownValue('FIGHT!'), 3000))
+    timers.push(setTimeout(() => {
+      setCountdownValue(null)
+      setBattleStatus('active')
+    }, 3800))
+    return () => timers.forEach(clearTimeout)
   }, [battleStatus])
 
   useEffect(() => {
@@ -317,6 +315,7 @@ export function Battle({ user }: Props) {
 
   useEffect(() => {
     if (timeLeft !== 0 || battleStatus !== 'active') return
+    setEndReason('timeout')
     if (myHpRef.current >= opponentHpRef.current) {
       setBattleStatus('victory')
       if (!isAI && matchId) {
@@ -427,19 +426,60 @@ export function Battle({ user }: Props) {
   }, [battleStatus, isAI, latestLandmarksRef])  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (battleStatus === 'victory' || battleStatus === 'defeat') {
+    const isVictory = battleStatus === 'victory'
+    const opponentFinalHp = isAI ? aiHp : opponentHp
+    const myName = (profile?.display_name ?? 'YOU').toUpperCase()
+    const opponentName = (isAI ? aiName : (opponentProfile?.display_name ?? 'OPPONENT')).toUpperCase()
     return (
-      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center">
+      <div
+        className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
+        style={{ background: isVictory
+          ? 'radial-gradient(ellipse at center, #1a1200 0%, #000 70%)'
+          : 'radial-gradient(ellipse at center, #1a0000 0%, #000 70%)'
+        }}
+      >
         <DotLottieReact
-          src={battleStatus === 'victory' ? VICTORY_LOTTIE : DEFEAT_LOTTIE}
+          src={isVictory ? VICTORY_LOTTIE : DEFEAT_LOTTIE}
           autoplay
           loop={false}
-          style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
+          style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, opacity: 0.35 }}
         />
-        <div className="relative z-10 flex flex-col items-center gap-3">
-          <p className={`text-5xl font-bold ${battleStatus === 'victory' ? 'text-yellow-400' : 'text-red-500'}`}>
-            {battleStatus === 'victory' ? 'VICTORY' : 'DEFEAT'}
+        <div className="relative z-10 flex flex-col items-center gap-5 px-8 w-full max-w-xs">
+          <p className="text-gray-500 tracking-widest" style={{ fontSize: '0.55rem' }}>
+            {endReason === 'timeout' ? '— TIME UP —' : '— K.O. —'}
           </p>
-          <p className="text-gray-400 text-xs">Returning to lobby...</p>
+          <p style={{
+            fontFamily: 'var(--font-pixel)',
+            fontSize: 'clamp(2rem, 10vw, 3.5rem)',
+            fontWeight: 'bold',
+            lineHeight: 1.1,
+            color: isVictory ? '#facc15' : '#ef4444',
+            textShadow: isVictory
+              ? '0 0 40px rgba(250,204,21,0.8), 0 0 80px rgba(250,204,21,0.3)'
+              : '0 0 40px rgba(239,68,68,0.8), 0 0 80px rgba(239,68,68,0.3)',
+          }}>
+            {isVictory ? 'VICTORY' : 'DEFEAT'}
+          </p>
+          <div className="w-full flex gap-2 items-stretch mt-1">
+            <div className="flex-1 flex flex-col items-start gap-1.5 bg-gray-900/60 px-3 py-2 rounded">
+              <span className="text-gray-400 truncate" style={{ fontSize: '0.5rem' }}>{myName}</span>
+              <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${(myHp / MAX_HP) * 100}%`, backgroundColor: myHp > 0 ? '#22c55e' : '#374151' }} />
+              </div>
+              <span style={{ fontSize: '0.5rem', color: myHp > 0 ? '#4ade80' : '#6b7280' }}>{myHp}HP</span>
+            </div>
+            <div className="flex items-center px-1">
+              <span className="text-gray-700" style={{ fontSize: '0.55rem' }}>vs</span>
+            </div>
+            <div className="flex-1 flex flex-col items-end gap-1.5 bg-gray-900/60 px-3 py-2 rounded">
+              <span className="text-gray-400 truncate" style={{ fontSize: '0.5rem' }}>{opponentName}</span>
+              <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+                <div className="h-full rounded-full ml-auto" style={{ width: `${(opponentFinalHp / MAX_HP) * 100}%`, backgroundColor: opponentFinalHp > 0 ? '#22c55e' : '#374151' }} />
+              </div>
+              <span style={{ fontSize: '0.5rem', color: opponentFinalHp > 0 ? '#4ade80' : '#6b7280' }}>{opponentFinalHp}HP</span>
+            </div>
+          </div>
+          <p className="text-gray-600 text-xs mt-1">Returning to lobby...</p>
         </div>
       </div>
     )
@@ -487,8 +527,43 @@ export function Battle({ user }: Props) {
             style={{ transform: 'scaleX(-1)' }}
           />
           {battleStatus === 'connecting' && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-gray-500 text-xs">Connecting...</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/85">
+              <p className="text-gray-600 tracking-widest mb-8" style={{ fontSize: '0.5rem' }}>OPPONENT FOUND</p>
+              <div className="flex items-center gap-8">
+                <div className="flex flex-col items-center gap-3">
+                  {profile?.avatar_url
+                    ? <img src={profile.avatar_url} className="w-16 h-16 rounded-full object-cover border-2 border-blue-500" />
+                    : <div className="w-16 h-16 rounded-full border-2 border-blue-500 bg-gray-900 flex items-center justify-center">
+                        <span className="text-white text-xl">{(profile?.display_name ?? 'Y')[0].toUpperCase()}</span>
+                      </div>
+                  }
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-white text-xs">{profile?.display_name ?? 'YOU'}</span>
+                    {profile?.country_code && <span className="text-sm">{toFlag(profile.country_code)}</span>}
+                  </div>
+                </div>
+                <span className="text-gray-700 font-bold" style={{ fontFamily: 'var(--font-pixel)', fontSize: '4vw' }}>VS</span>
+                <div className="flex flex-col items-center gap-3">
+                  {opponentProfile?.avatar_url
+                    ? <img src={opponentProfile.avatar_url} className="w-16 h-16 rounded-full object-cover border-2 border-red-500" />
+                    : <div className="w-16 h-16 rounded-full border-2 border-red-500 bg-gray-900 flex items-center justify-center">
+                        {opponentProfile
+                          ? <span className="text-white text-xl">{(opponentProfile.display_name ?? 'O')[0].toUpperCase()}</span>
+                          : <span className="text-gray-600 text-xs animate-pulse">···</span>
+                        }
+                      </div>
+                  }
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-white text-xs">{opponentProfile?.display_name ?? '···'}</span>
+                    {opponentProfile?.country_code && <span className="text-sm">{toFlag(opponentProfile.country_code)}</span>}
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-1.5 mt-10">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-700 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-700 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-700 animate-pulse" style={{ animationDelay: '0.4s' }} />
+              </div>
             </div>
           )}
           {opponentAfk && opponentAfkCountdown !== null && (
@@ -589,9 +664,8 @@ export function Battle({ user }: Props) {
       {battleStatus === 'countdown' && countdownValue !== null && (
         <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
           <span
-            key={countdownValue}
-            className="text-white font-bold select-none"
-            style={{ fontSize: '20vw', textShadow: '0 0 60px rgba(255,255,255,0.6), 0 4px 20px rgba(0,0,0,0.8)' }}
+            key={String(countdownValue)}
+            className={typeof countdownValue === 'string' ? 'countdown-fight' : 'countdown-number'}
           >
             {countdownValue}
           </span>

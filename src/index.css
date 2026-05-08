@@ -45,6 +45,43 @@ body {
   display: inline-block;
 }
 
+@keyframes countdown-pop {
+  0%   { transform: scale(1.8); opacity: 0; }
+  15%  { transform: scale(1.0); opacity: 1; }
+  75%  { transform: scale(1.0); opacity: 1; }
+  100% { transform: scale(0.85); opacity: 0; }
+}
+
+@keyframes fight-flash {
+  0%   { transform: scale(0.4) skewX(-8deg); opacity: 0; }
+  20%  { transform: scale(1.08) skewX(0deg); opacity: 1; }
+  60%  { transform: scale(1.0); opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.countdown-number {
+  display: inline-block;
+  font-family: var(--font-pixel), monospace;
+  font-size: 28vw;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 60px rgba(255,255,255,0.5), 0 4px 30px rgba(0,0,0,0.8);
+  animation: countdown-pop 0.9s ease-out forwards;
+  line-height: 1;
+}
+
+.countdown-fight {
+  display: inline-block;
+  font-family: var(--font-pixel), monospace;
+  font-size: 9vw;
+  font-weight: bold;
+  color: #facc15;
+  text-shadow: 0 0 30px rgba(250,204,21,0.9), 0 0 60px rgba(249,115,22,0.7);
+  animation: fight-flash 0.8s ease-out forwards;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
 .combat-feedback {
   position: absolute;
   white-space: nowrap;
